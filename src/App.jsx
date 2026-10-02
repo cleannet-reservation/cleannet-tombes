@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 // ─── COULEURS ──────────────────────────────────────────────────────────────
 const C = {
@@ -65,7 +65,10 @@ function ProgressBar({ step }) {
   );
 }
 
-function Landing({ onStart }) {
+function Landing({ onStart, config }) {
+  const formules = config?.formules || FORMULES;
+  const prestations = config?.prestations || PRESTATIONS;
+  const cimetieres = config?.cimetieres || CIMETIERES;
   return (
     <div style={{ fontFamily: "'Georgia', serif", color: C.stone, background: C.marble, minHeight: "100vh" }}>
       {/* Header */}
@@ -97,7 +100,7 @@ function Landing({ onStart }) {
         <h2 style={{ fontSize: 26, fontWeight: 400, textAlign: "center", marginBottom: 8 }}>Nos prestations</h2>
         <p style={{ color: C.muted, textAlign: "center", fontSize: 14, margin: "0 0 40px", fontFamily: "system-ui" }}>Chaque intervention est réalisée avec discrétion et respect</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16 }}>
-          {PRESTATIONS.map(p => (
+          {prestations.map(p => (
             <div key={p.id} style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 6, padding: "20px 18px" }}>
               <div style={{ fontSize: 28, marginBottom: 10 }}>{p.icon}</div>
               <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>{p.label}</div>
@@ -113,7 +116,7 @@ function Landing({ onStart }) {
           <h2 style={{ fontSize: 26, fontWeight: 400, textAlign: "center", marginBottom: 8 }}>Formules d'entretien</h2>
           <p style={{ color: C.muted, textAlign: "center", fontSize: 14, margin: "0 0 40px", fontFamily: "system-ui" }}>À partir de 19€ par intervention</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 12 }}>
-            {FORMULES.map(f => (
+            {formules.map(f => (
               <div key={f.id} style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 6, padding: "20px 16px", textAlign: "center", position: "relative" }}>
                 {f.badge && <div style={{ position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)", background: C.sage, color: C.white, fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, fontFamily: "system-ui", whiteSpace: "nowrap" }}>{f.badge}</div>}
                 <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{f.label}</div>
@@ -133,7 +136,7 @@ function Landing({ onStart }) {
       <div style={{ padding: "56px 24px", maxWidth: 800, margin: "0 auto" }}>
         <h2 style={{ fontSize: 26, fontWeight: 400, textAlign: "center", marginBottom: 40 }}>Cimetières desservis</h2>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {CIMETIERES.filter(c => !c.startsWith("Autre")).map(c => (
+          {cimetieres.filter(c => !c.startsWith("Autre")).map(c => (
             <div key={c} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", background: C.white, border: `1px solid ${C.border}`, borderRadius: 6 }}>
               <span style={{ color: C.sage, fontSize: 18 }}>📍</span>
               <span style={{ fontSize: 14, fontFamily: "system-ui" }}>{c}</span>
@@ -161,7 +164,12 @@ function Landing({ onStart }) {
   );
 }
 
-function Reservation({ onBack }) {
+function Reservation({ onBack, config }) {
+  const FORMULES_DATA = config?.formules || FORMULES;
+  const PRESTATIONS_DATA = config?.prestations || PRESTATIONS;
+  const CIMETIERES_DATA = [...(config?.cimetieres || CIMETIERES), "Autre (préciser dans les notes)"];
+  const whatsappNum = config?.whatsapp || "33612922048";
+
   const [step, setStep] = useState(0);
   const [formule, setFormule] = useState(null);
   const [prestations, setPrestations] = useState([]);
@@ -171,8 +179,17 @@ function Reservation({ onBack }) {
 
   const togglePrestation = (id) => setPrestations(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
 
-  const fleursSup = prestations.includes("fleurs_naturelles") ? 15 : prestations.includes("fleurs_artificielles") ? 8 : 0;
-  const photosSup = prestations.includes("photos") ? 5 : 0;
+  const fleursSup = (() => {
+    const fn = PRESTATIONS_DATA.find(p => p.id === "fleurs_naturelles");
+    const fa = PRESTATIONS_DATA.find(p => p.id === "fleurs_artificielles");
+    if (prestations.includes("fleurs_naturelles")) return fn?.sup || 15;
+    if (prestations.includes("fleurs_artificielles")) return fa?.sup || 8;
+    return 0;
+  })();
+  const photosSup = (() => {
+    const ph = PRESTATIONS_DATA.find(p => p.id === "photos");
+    return prestations.includes("photos") ? (ph?.sup || 5) : 0;
+  })();
   const total = formule ? formule.prix + fleursSup + photosSup : 0;
 
   const canNext = () => {
@@ -204,7 +221,7 @@ ${form.note ? `📝 *Notes :* ${form.note}` : ""}
 
 _Envoyé depuis cleannet-tombes.vercel.app_`
     );
-    window.open(`https://wa.me/33612922048?text=${msg}`, "_blank");
+    window.open(`https://wa.me/${whatsappNum}?text=${msg}`, "_blank");
     setDone(true);
   };
 
@@ -249,7 +266,7 @@ _Envoyé depuis cleannet-tombes.vercel.app_`
             <h2 style={{ fontSize: 22, fontWeight: 400, margin: "0 0 6px" }}>Choisissez votre formule</h2>
             <p style={{ color: C.muted, fontSize: 13, margin: "0 0 24px", fontFamily: "system-ui" }}>Ponctuel ou abonnement récurrent</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 32 }}>
-              {FORMULES.map(f => (
+              {FORMULES_DATA.map(f => (
                 <button key={f.id} onClick={() => setFormule(f)} style={{ border: `1.5px solid ${formule?.id === f.id ? C.sage : C.border}`, background: formule?.id === f.id ? C.sageLight : C.white, borderRadius: 6, padding: "14px 18px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", textAlign: "left" }}>
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}>{f.label}</div>
@@ -266,7 +283,7 @@ _Envoyé depuis cleannet-tombes.vercel.app_`
             <h3 style={{ fontSize: 18, fontWeight: 400, margin: "0 0 6px" }}>Prestations souhaitées</h3>
             <p style={{ color: C.muted, fontSize: 13, margin: "0 0 16px", fontFamily: "system-ui" }}>Sélectionnez une ou plusieurs options</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {PRESTATIONS.map(p => {
+              {PRESTATIONS_DATA.map(p => {
                 const active = prestations.includes(p.id);
                 const sup = p.id === "fleurs_naturelles" ? "+15€" : p.id === "fleurs_artificielles" ? "+8€" : p.id === "photos" ? "+5€" : "Inclus";
                 return (
@@ -322,7 +339,7 @@ _Envoyé depuis cleannet-tombes.vercel.app_`
                     <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 4, fontFamily: "system-ui", color: C.muted }}>Cimetière *</label>
                     <select value={form.cimetiere} onChange={e => setForm(p => ({...p, cimetiere: e.target.value}))} style={IS}>
                       <option value="">Sélectionnez un cimetière</option>
-                      {CIMETIERES.map(c => <option key={c} value={c}>{c}</option>)}
+                      {CIMETIERES_DATA.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
                   <div>
@@ -412,8 +429,202 @@ _Envoyé depuis cleannet-tombes.vercel.app_`
   );
 }
 
+// ─── ADMIN ────────────────────────────────────────────────────────────────
+function Admin({ onBack }) {
+  const [auth, setAuth] = useState(false);
+  const [pwd, setPwd] = useState("");
+  const [error, setError] = useState(null);
+  const [cfg, setCfg] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const ADMIN_PWD = "tombes2026";
+
+  useEffect(() => {
+    if (auth) {
+      fetch(`/api/config?t=${Date.now()}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data && Object.keys(data).length > 0) {
+            setCfg(data);
+          } else {
+            setCfg({
+              formules: [
+                { id: "ponctuel", label: "Ponctuel", desc: "Une seule intervention", prix: 49, badge: null },
+                { id: "mensuel", label: "Mensuel", desc: "1 intervention / mois", prix: 39, badge: "Populaire" },
+                { id: "trimestriel", label: "Trimestriel", desc: "1 intervention / trimestre", prix: 29, badge: null },
+                { id: "annuel", label: "Annuel", desc: "1 intervention / an", prix: 19, badge: "Économique" },
+              ],
+              prestations: [
+                { id: "nettoyage", icon: "🧼", label: "Nettoyage de la pierre", desc: "Démoussage, détartrage et nettoyage complet", sup: null },
+                { id: "desherbage", icon: "🌿", label: "Désherbage", desc: "Élimination des mauvaises herbes", sup: null },
+                { id: "fleurs_artificielles", icon: "💐", label: "Fleurs artificielles", desc: "Dépôt d'un bouquet de fleurs artificielles", sup: 8 },
+                { id: "fleurs_naturelles", icon: "🌸", label: "Fleurs naturelles", desc: "Dépôt de fleurs fraîches de saison", sup: 15 },
+                { id: "photos", icon: "📸", label: "Photos avant/après", desc: "Rapport photo envoyé par SMS ou email", sup: 5 },
+              ],
+              cimetieres: [
+                "Cimetière d'Antibes — Avenue du Docteur Donat",
+                "Cimetière de la Rayne — Antibes",
+                "Cimetière de Juan-les-Pins",
+                "Cimetière de Vallauris — Avenue Georges Clemenceau",
+              ],
+              whatsapp: "33612922048",
+              adminPwd: "tombes2026",
+            });
+          }
+        })
+        .catch(() => {});
+    }
+  }, [auth]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await fetch("/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cfg),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch(e) { console.error(e); }
+    finally { setSaving(false); }
+  };
+
+  const IS = { border: `1px solid ${C.border}`, borderRadius: 4, padding: "9px 12px", fontSize: 14, color: C.stone, outline: "none", fontFamily: "system-ui", background: C.white, width: "100%", boxSizing: "border-box" };
+
+  if (!auth) return (
+    <div style={{ minHeight: "100vh", background: C.marble, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, fontFamily: "Georgia, serif" }}>
+      <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 6, padding: "40px 32px", maxWidth: 380, width: "100%" }}>
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>🪦</div>
+          <h2 style={{ fontSize: 20, fontWeight: 400, margin: 0 }}>CleanNet Tombes — Admin</h2>
+        </div>
+        {error && <div style={{ background: "#FEF2F2", border: "1px solid #FCA5A5", borderRadius: 4, padding: "10px 14px", fontSize: 13, color: "#DC2626", marginBottom: 14 }}>{error}</div>}
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 4, fontFamily: "system-ui", color: C.muted }}>Mot de passe</label>
+          <input type="password" value={pwd} onChange={e => setPwd(e.target.value)} onKeyDown={e => e.key === "Enter" && (pwd === ADMIN_PWD ? setAuth(true) : setError("Mot de passe incorrect"))}
+            style={IS} placeholder="••••••••" />
+        </div>
+        <button onClick={() => pwd === ADMIN_PWD ? setAuth(true) : setError("Mot de passe incorrect")}
+          style={{ width: "100%", background: C.sage, color: C.white, border: "none", borderRadius: 4, padding: "12px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "system-ui" }}>
+          Se connecter →
+        </button>
+        <button onClick={onBack} style={{ width: "100%", background: "none", border: "none", color: C.muted, fontSize: 13, cursor: "pointer", marginTop: 12, fontFamily: "system-ui" }}>← Retour au site</button>
+      </div>
+    </div>
+  );
+
+  if (!cfg) return <div style={{ minHeight: "100vh", background: C.marble, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui", color: C.muted }}>⏳ Chargement...</div>;
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.marble, fontFamily: "system-ui", color: C.stone }}>
+      <header style={{ background: C.stone, padding: "14px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100 }}>
+        <button onClick={onBack} style={{ color: "#AAA", background: "none", border: "none", cursor: "pointer", fontSize: 13 }}>← Site</button>
+        <div style={{ color: C.white, fontWeight: 700 }}>🪦 Admin CleanNet Tombes</div>
+        <button onClick={save} style={{ background: saved ? "#059669" : C.sage, color: C.white, border: "none", borderRadius: 6, padding: "8px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+          {saving ? "⏳" : saved ? "✓ Sauvegardé !" : "💾 Sauvegarder"}
+        </button>
+      </header>
+
+      <div style={{ maxWidth: 700, margin: "0 auto", padding: "24px 20px 60px" }}>
+
+        {/* WhatsApp */}
+        <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 8, padding: "20px", marginBottom: 16 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 12px" }}>📲 WhatsApp</h3>
+          <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 4, color: C.muted }}>Numéro (format international sans +)</label>
+          <input value={cfg.whatsapp || ""} onChange={e => setCfg(c => ({...c, whatsapp: e.target.value}))} style={IS} placeholder="33612922048" />
+        </div>
+
+        {/* Formules */}
+        <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 8, padding: "20px", marginBottom: 16 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 16px" }}>💶 Formules et tarifs</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {(cfg.formules || []).map((f, fi) => (
+              <div key={f.id} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 80px", gap: 8, alignItems: "end" }}>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, display: "block", marginBottom: 3, color: C.muted }}>{f.label} — Label</label>
+                  <input value={f.desc} onChange={e => { const n=[...cfg.formules]; n[fi]={...n[fi],desc:e.target.value}; setCfg(c=>({...c,formules:n})); }} style={IS} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, display: "block", marginBottom: 3, color: C.muted }}>Badge (optionnel)</label>
+                  <input value={f.badge || ""} onChange={e => { const n=[...cfg.formules]; n[fi]={...n[fi],badge:e.target.value||null}; setCfg(c=>({...c,formules:n})); }} style={IS} placeholder="ex: Populaire" />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, display: "block", marginBottom: 3, color: C.muted }}>Prix (€)</label>
+                  <input type="number" value={f.prix} onChange={e => { const n=[...cfg.formules]; n[fi]={...n[fi],prix:Number(e.target.value)}; setCfg(c=>({...c,formules:n})); }} style={IS} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Prestations */}
+        <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 8, padding: "20px", marginBottom: 16 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 16px" }}>🧹 Prestations</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {(cfg.prestations || []).map((p, pi) => (
+              <div key={p.id} style={{ border: `1px solid ${C.border}`, borderRadius: 6, padding: "12px 14px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "48px 1fr 80px", gap: 8, marginBottom: 8 }}>
+                  <input value={p.icon} onChange={e => { const n=[...cfg.prestations]; n[pi]={...n[pi],icon:e.target.value}; setCfg(c=>({...c,prestations:n})); }} style={{...IS, textAlign:"center", fontSize:18}} />
+                  <input value={p.label} onChange={e => { const n=[...cfg.prestations]; n[pi]={...n[pi],label:e.target.value}; setCfg(c=>({...c,prestations:n})); }} style={IS} placeholder="Nom de la prestation" />
+                  <div style={{ position: "relative" }}>
+                    <input type="number" value={p.sup || ""} onChange={e => { const n=[...cfg.prestations]; n[pi]={...n[pi],sup:e.target.value?Number(e.target.value):null}; setCfg(c=>({...c,prestations:n})); }} style={{...IS, paddingRight:24}} placeholder="0" />
+                    <span style={{ position:"absolute", right:8, top:"50%", transform:"translateY(-50%)", fontSize:11, color:C.muted }}>€</span>
+                  </div>
+                </div>
+                <input value={p.desc} onChange={e => { const n=[...cfg.prestations]; n[pi]={...n[pi],desc:e.target.value}; setCfg(c=>({...c,prestations:n})); }} style={IS} placeholder="Description" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Cimetières */}
+        <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 8, padding: "20px", marginBottom: 16 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 16px" }}>📍 Cimetières desservis</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {(cfg.cimetieres || []).map((c, ci) => (
+              <div key={ci} style={{ display: "flex", gap: 8 }}>
+                <input value={c} onChange={e => { const n=[...cfg.cimetieres]; n[ci]=e.target.value; setCfg(cfg=>({...cfg,cimetieres:n})); }} style={{...IS, flex:1}} />
+                <button onClick={() => setCfg(cfg=>({...cfg,cimetieres:cfg.cimetieres.filter((_,i)=>i!==ci)}))}
+                  style={{ background:"#FEE2E2", border:"none", borderRadius:4, padding:"8px 12px", color:"#DC2626", cursor:"pointer", fontWeight:700 }}>✕</button>
+              </div>
+            ))}
+            <button onClick={() => setCfg(c=>({...c,cimetieres:[...c.cimetieres,"Nouveau cimetière"]}))}
+              style={{ background:"none", border:`1.5px dashed ${C.sage}`, borderRadius:6, padding:"9px", color:C.sage, fontWeight:600, cursor:"pointer" }}>
+              + Ajouter un cimetière
+            </button>
+          </div>
+        </div>
+
+        {/* Mot de passe */}
+        <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 8, padding: "20px" }}>
+          <h3 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 12px" }}>🔑 Mot de passe admin</h3>
+          <input value={cfg.adminPwd || ""} onChange={e => setCfg(c=>({...c,adminPwd:e.target.value}))} style={IS} placeholder="tombes2026" />
+          <p style={{ fontSize: 11, color: C.muted, margin: "6px 0 0" }}>⚠️ Changez ce mot de passe et sauvegardez</p>
+        </div>
+
+        <button onClick={save} style={{ width:"100%", marginTop:20, background:saved?"#059669":C.sage, color:C.white, border:"none", borderRadius:6, padding:"14px", fontWeight:800, fontSize:15, cursor:"pointer" }}>
+          {saving?"⏳ Sauvegarde...":saved?"✓ Sauvegardé !":"💾 Sauvegarder toutes les modifications"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [page, setPage] = useState("landing");
-  if (page === "reservation") return <Reservation onBack={() => setPage("landing")} />;
-  return <Landing onStart={() => setPage("reservation")} />;
+  const [config, setConfig] = useState(null);
+
+  useEffect(() => {
+    fetch(`/api/config?t=${Date.now()}`)
+      .then(r => r.json())
+      .then(data => { if (data && Object.keys(data).length > 0) setConfig(data); })
+      .catch(() => {});
+  }, []);
+
+  const path = window.location.pathname;
+  if (path === "/admin") return <Admin onBack={() => window.location.href = "/"} />;
+  if (page === "reservation") return <Reservation onBack={() => setPage("landing")} config={config} />;
+  return <Landing onStart={() => setPage("reservation")} config={config} />;
 }
