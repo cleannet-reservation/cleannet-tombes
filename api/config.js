@@ -24,10 +24,11 @@ export default async function handler(req, res) {
   if (req.method === "POST") {
     const configData = req.body.data || req.body;
     if (!configData || Object.keys(configData).length === 0) return res.status(400).json({ error: "No data" });
-    const r = await fetch(`${base}?id=eq.main`, {
-      method: "PATCH",
-      headers: { ...headers(), "Prefer": "return=representation" },
-      body: JSON.stringify({ data: configData }),
+    // Utiliser upsert au lieu de PATCH pour éviter les problèmes de ligne manquante
+    const r = await fetch(`${base}`, {
+      method: "POST",
+      headers: { ...headers(), "Prefer": "resolution=merge-duplicates,return=representation" },
+      body: JSON.stringify({ id: "main", data: configData }),
     });
     const result = await r.json();
     console.log("Config saved:", JSON.stringify(result).slice(0, 200));
