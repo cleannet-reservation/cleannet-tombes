@@ -168,6 +168,7 @@ function Reservation({ onBack, config }) {
   const FORMULES_DATA = config?.formules || FORMULES;
   const PRESTATIONS_DATA = config?.prestations || PRESTATIONS;
   const CIMETIERES_DATA = [...(config?.cimetieres || CIMETIERES), "Autre (préciser dans les notes)"];
+  // ✅ config est maintenant toujours chargé depuis Supabase (DEFAULT_CONFIG en fallback)
   const whatsappNum = config?.whatsapp || "33612922048";
 
   const [step, setStep] = useState(0);
@@ -982,8 +983,14 @@ export default function App() {
       .then(r => r.json())
       .then(data => {
         if (data && Object.keys(data).length > 0) {
-          // Fusionner avec les défauts pour les clés manquantes
-          setConfig({ ...DEFAULT_CONFIG, ...data });
+          // Fusion intelligente — garder les défauts si la clé est vide dans Supabase
+          setConfig({
+            formules: (data.formules && data.formules.length > 0) ? data.formules : DEFAULT_CONFIG.formules,
+            prestations: (data.prestations && data.prestations.length > 0) ? data.prestations : DEFAULT_CONFIG.prestations,
+            cimetieres: (data.cimetieres && data.cimetieres.length > 0) ? data.cimetieres : DEFAULT_CONFIG.cimetieres,
+            whatsapp: data.whatsapp || DEFAULT_CONFIG.whatsapp,
+            adminPwd: data.adminPwd || "tombes2026",
+          });
         } else {
           setConfig(DEFAULT_CONFIG);
         }
