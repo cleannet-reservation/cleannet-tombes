@@ -875,14 +875,34 @@ function Admin({ onBack }) {
               <h3 style={{ fontSize:14, fontWeight:700, margin:"0 0 14px" }}>💶 Formules et tarifs</h3>
               <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
                 {(cfg.formules||[]).map((f,fi)=>(
-                  <div key={f.id} style={{ display:"grid", gridTemplateColumns:"1fr 80px", gap:8 }}>
-                    <div style={{ fontSize:13, fontWeight:600, color:C.stone, padding:"9px 0" }}>{f.label}</div>
-                    <div style={{ position:"relative" }}>
-                      <input type="number" value={f.prix} onChange={e=>{const n=[...cfg.formules];n[fi]={...n[fi],prix:Number(e.target.value)};setCfg(c=>({...c,formules:n}));}} style={{...IS,paddingRight:20}} />
-                      <span style={{ position:"absolute", right:8, top:"50%", transform:"translateY(-50%)", fontSize:11, color:C.muted }}>€</span>
+                  <div key={f.id} style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 12px" }}>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 80px 36px", gap:8, marginBottom:6 }}>
+                      <div>
+                        <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:3 }}>Nom</label>
+                        <input value={f.label} onChange={e=>{const n=[...cfg.formules];n[fi]={...n[fi],label:e.target.value};setCfg(c=>({...c,formules:n}));}} style={IS} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:3 }}>Description</label>
+                        <input value={f.desc||""} onChange={e=>{const n=[...cfg.formules];n[fi]={...n[fi],desc:e.target.value};setCfg(c=>({...c,formules:n}));}} style={IS} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:3 }}>Prix (€)</label>
+                        <input type="number" value={f.prix} onChange={e=>{const n=[...cfg.formules];n[fi]={...n[fi],prix:Number(e.target.value)};setCfg(c=>({...c,formules:n}));}} style={IS} />
+                      </div>
+                      <div style={{ display:"flex", alignItems:"flex-end" }}>
+                        <button onClick={()=>setCfg(c=>({...c,formules:c.formules.filter((_,i)=>i!==fi)}))} style={{ background:"#FEE2E2", border:"none", borderRadius:6, padding:"8px 10px", color:"#DC2626", cursor:"pointer", fontWeight:700, width:"100%" }}>✕</button>
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:3 }}>Badge (ex: Populaire)</label>
+                      <input value={f.badge||""} onChange={e=>{const n=[...cfg.formules];n[fi]={...n[fi],badge:e.target.value||null};setCfg(c=>({...c,formules:n}));}} style={IS} placeholder="Laisser vide si aucun" />
                     </div>
                   </div>
                 ))}
+                <button onClick={()=>setCfg(c=>({...c,formules:[...(c.formules||[]),{id:"f"+Date.now(),label:"Nouvelle formule",desc:"Description",prix:0,badge:null}]}))}
+                  style={{ background:"none", border:`1.5px dashed ${C.sage}`, borderRadius:6, padding:"9px", color:C.sage, fontWeight:600, cursor:"pointer" }}>
+                  + Ajouter une formule
+                </button>
               </div>
             </div>
 
