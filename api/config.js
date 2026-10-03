@@ -27,10 +27,11 @@ export default async function handler(req, res) {
     const r = await fetch(`${base}?id=eq.main`, {
       method: "PATCH",
       headers: { ...headers(), "Prefer": "return=representation" },
-      body: JSON.stringify({ data: configData, updated_at: new Date().toISOString() }),
+      body: JSON.stringify({ data: configData }),
     });
     const result = await r.json();
-    console.log("Config saved:", JSON.stringify(result).slice(0, 100));
+    console.log("Config saved:", JSON.stringify(result).slice(0, 200));
+    if (!r.ok) return res.status(500).json({ error: JSON.stringify(result) });
     return res.status(200).json({ success: true });
   }
 
