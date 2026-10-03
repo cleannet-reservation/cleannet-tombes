@@ -46,6 +46,19 @@ export default async function handler(req, res) {
 
   try {
     if (brevoKey) {
+      // Email confirmation client
+      if (email) {
+        await fetch("https://api.brevo.com/v3/smtp/email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "api-key": brevoKey },
+          body: JSON.stringify({
+            sender: { name: "CleanNet Tombes", email: senderEmail },
+            to: [{ email, name: `${prenom} ${nom}` }],
+            subject: `✅ Demande reçue — Entretien pour ${defunt}`,
+            htmlContent: clientHtml,
+          }),
+        });
+      }
       // Email propriétaire
       await fetch("https://api.brevo.com/v3/smtp/email", {
         method: "POST",

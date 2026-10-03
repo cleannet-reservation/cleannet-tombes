@@ -437,180 +437,484 @@ function Admin({ onBack }) {
   const [cfg, setCfg] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [tab, setTab] = useState("config");
+  const [clients, setClients] = useState([]);
+  const [passages, setPassages] = useState([]);
+  const [paiements, setPaiements] = useState([]);
+  const [showNewClient, setShowNewClient] = useState(false);
+  const [showNewPassage, setShowNewPassage] = useState(false);
+  const [showNewPaiement, setShowNewPaiement] = useState(false);
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [newClient, setNewClient] = useState({ nom:"", telephone:"", email:"", cimetiere:"", defunt:"", concession:"", type_pierre:"", formule_code:"mensuel", notes:"" });
+  const [newPassage, setNewPassage] = useState({ client_id:"", date_prevue:"", montant:"", remarques:"", fleurs:false });
+  const [newPaiement, setNewPaiement] = useState({ client_id:"", montant:"", moyen:"stripe", statut:"paye" });
 
-  const ADMIN_PWD = "tombes2026";
+  const ADMIN_PWD = cfg?.adminPwd || "tombes2026";
+  const SB_URL = process.env.SUPABASE_URL || "";
+  const SB_KEY = process.env.SUPABASE_ANON_KEY || "";
 
-  useEffect(() => {
-    if (auth) {
-      fetch(`/api/config?t=${Date.now()}`)
-        .then(r => r.json())
-        .then(data => {
-          if (data && Object.keys(data).length > 0) {
-            setCfg(data);
-          } else {
-            setCfg({
-              formules: [
-                { id: "ponctuel", label: "Ponctuel", desc: "Une seule intervention", prix: 49, badge: null },
-                { id: "mensuel", label: "Mensuel", desc: "1 intervention / mois", prix: 39, badge: "Populaire" },
-                { id: "trimestriel", label: "Trimestriel", desc: "1 intervention / trimestre", prix: 29, badge: null },
-                { id: "annuel", label: "Annuel", desc: "1 intervention / an", prix: 19, badge: "Économique" },
-              ],
-              prestations: [
-                { id: "nettoyage", icon: "🧼", label: "Nettoyage de la pierre", desc: "Démoussage, détartrage et nettoyage complet", sup: null },
-                { id: "desherbage", icon: "🌿", label: "Désherbage", desc: "Élimination des mauvaises herbes", sup: null },
-                { id: "fleurs_artificielles", icon: "💐", label: "Fleurs artificielles", desc: "Dépôt d'un bouquet de fleurs artificielles", sup: 8 },
-                { id: "fleurs_naturelles", icon: "🌸", label: "Fleurs naturelles", desc: "Dépôt de fleurs fraîches de saison", sup: 15 },
-                { id: "photos", icon: "📸", label: "Photos avant/après", desc: "Rapport photo envoyé par SMS ou email", sup: 5 },
-              ],
-              cimetieres: [
-                "Cimetière d'Antibes — Avenue du Docteur Donat",
-                "Cimetière de la Rayne — Antibes",
-                "Cimetière de Juan-les-Pins",
-                "Cimetière de Vallauris — Avenue Georges Clemenceau",
-              ],
-              whatsapp: "33612922048",
-              adminPwd: "tombes2026",
-            });
-          }
-        })
-        .catch(() => {});
-    }
-  }, [auth]);
-
-  const save = async () => {
-    setSaving(true);
-    try {
-      await fetch("/api/config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(cfg),
-      });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } catch(e) { console.error(e); }
-    finally { setSaving(false); }
+  const sb = async (table, method="GET", body=null, query="") => {
+    const url = `/api/db?table=${table}&query=${encodeURIComponent(query)}`;
+    const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : null });
+    return r.json();
   };
 
-  const IS = { border: `1px solid ${C.border}`, borderRadius: 4, padding: "9px 12px", fontSize: 14, color: C.stone, outline: "none", fontFamily: "system-ui", background: C.white, width: "100%", boxSizing: "border-box" };
+  useEffect(() => {
+    if (!auth) return;
+    fetch(`/api/config?t=${Date.now()}`).then(r=>r.json()).then(data => {
+      if (data && Object.keys(data).length > 0) setCfg(data);
+      else setCfg({
+        formules: [
+          { id:"ponctuel", label:"Ponctuel", desc:"Une seule intervention", prix:49, badge:null },
+          { id:"mensuel", label:"Mensuel", desc:"1 intervention / mois", prix:50, badge:"Populaire" },
+          { id:"bimestriel", label:"Bimestriel", desc:"1 intervention / 2 mois", prix:65, badge:null },
+          { id:"trimestriel", label:"Trimestriel", desc:"1 intervention / trimestre", prix:70, badge:null },
+          { id:"semestriel", label:"Semestriel", desc:"1 intervention / 6 mois", prix:90, badge:null },
+          { id:"annuel", label:"Annuel (Toussaint)", desc:"1 intervention / an", prix:95, badge:"Économique" },
+        ],
+        prestations: [
+          { id:"nettoyage", icon:"🧼", label:"Nettoyage de la pierre", desc:"Démoussage, détartrage et nettoyage complet", sup:null },
+          { id:"desherbage", icon:"🌿", label:"Désherbage", desc:"Élimination des mauvaises herbes", sup:null },
+          { id:"fleurs_artificielles", icon:"💐", label:"Fleurs artificielles", desc:"Dépôt d'un bouquet de fleurs artificielles", sup:8 },
+          { id:"fleurs_naturelles", icon:"🌸", label:"Fleurs naturelles", desc:"Dépôt de fleurs fraîches de saison", sup:15 },
+          { id:"photos", icon:"📸", label:"Photos avant/après", desc:"Rapport photo envoyé par SMS ou email", sup:5 },
+        ],
+        cimetieres: [
+          "Cimetière d'Antibes — Avenue du Docteur Donat",
+          "Cimetière de la Rayne — Antibes",
+          "Cimetière de Juan-les-Pins",
+          "Cimetière de Vallauris — Avenue Georges Clemenceau",
+        ],
+        whatsapp: "33612922048",
+        adminPwd: "tombes2026",
+      });
+    }).catch(()=>{});
+  }, [auth]);
+
+  useEffect(() => {
+    if (!auth) return;
+    loadClients();
+    loadPassages();
+    loadPaiements();
+  }, [auth]);
+
+  const loadClients = () => fetch("/api/clients-sepulture").then(r=>r.json()).then(d=>setClients(Array.isArray(d)?d:[])).catch(()=>{});
+  const loadPassages = () => fetch("/api/passages").then(r=>r.json()).then(d=>setPassages(Array.isArray(d)?d:[])).catch(()=>{});
+  const loadPaiements = () => fetch("/api/paiements").then(r=>r.json()).then(d=>setPaiements(Array.isArray(d)?d:[])).catch(()=>{});
+
+  const saveConfig = async () => {
+    setSaving(true);
+    try {
+      await fetch("/api/config", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(cfg) });
+      setSaved(true); setTimeout(()=>setSaved(false), 2000);
+    } catch(e){} finally { setSaving(false); }
+  };
+
+  const addClient = async () => {
+    await fetch("/api/clients-sepulture", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(newClient) });
+    setNewClient({ nom:"", telephone:"", email:"", cimetiere:"", defunt:"", concession:"", type_pierre:"", formule_code:"mensuel", notes:"" });
+    setShowNewClient(false);
+    loadClients();
+  };
+
+  const addPassage = async () => {
+    await fetch("/api/passages", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(newPassage) });
+    setNewPassage({ client_id:"", date_prevue:"", montant:"", remarques:"", fleurs:false });
+    setShowNewPassage(false);
+    loadPassages();
+  };
+
+  const updatePassage = async (id, updates) => {
+    await fetch("/api/passages", { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({id, ...updates}) });
+    loadPassages();
+  };
+
+  const addPaiement = async () => {
+    await fetch("/api/paiements", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(newPaiement) });
+    setNewPaiement({ client_id:"", montant:"", moyen:"stripe", statut:"paye" });
+    setShowNewPaiement(false);
+    loadPaiements();
+  };
+
+  const IS = { border:`1px solid ${C.border}`, borderRadius:4, padding:"9px 12px", fontSize:14, color:C.stone, outline:"none", fontFamily:"system-ui", background:C.white, width:"100%", boxSizing:"border-box" };
+  const SBadge = ({ s }) => {
+    const colors = { actif:"#059669", impaye:"#D97706", suspendu:"#6B7280", resilie:"#DC2626", prevu:"#2563EB", realise:"#059669", annule:"#6B7280", reporte:"#D97706", paye:"#059669", echoue:"#DC2626" };
+    return <span style={{ background: (colors[s]||"#6B7280")+"22", color: colors[s]||"#6B7280", fontSize:11, fontWeight:700, padding:"3px 8px", borderRadius:20 }}>{s}</span>;
+  };
+
+  const TABS = [
+    { id:"dashboard", label:"📊 Tableau de bord" },
+    { id:"clients", label:"👥 Clients" },
+    { id:"passages", label:"🧹 Passages" },
+    { id:"paiements", label:"💶 Paiements" },
+    { id:"config", label:"⚙️ Configuration" },
+  ];
 
   if (!auth) return (
-    <div style={{ minHeight: "100vh", background: C.marble, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, fontFamily: "Georgia, serif" }}>
-      <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 6, padding: "40px 32px", maxWidth: 380, width: "100%" }}>
-        <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{ fontSize: 32, marginBottom: 8 }}>🪦</div>
-          <h2 style={{ fontSize: 20, fontWeight: 400, margin: 0 }}>CleanNet Tombes — Admin</h2>
+    <div style={{ minHeight:"100vh", background:C.marble, display:"flex", alignItems:"center", justifyContent:"center", padding:24, fontFamily:"Georgia, serif" }}>
+      <div style={{ background:C.white, border:`1px solid ${C.border}`, borderRadius:6, padding:"40px 32px", maxWidth:380, width:"100%" }}>
+        <div style={{ textAlign:"center", marginBottom:28 }}>
+          <div style={{ fontSize:32, marginBottom:8 }}>🪦</div>
+          <h2 style={{ fontSize:20, fontWeight:400, margin:0 }}>CleanNet Tombes — Admin</h2>
         </div>
-        {error && <div style={{ background: "#FEF2F2", border: "1px solid #FCA5A5", borderRadius: 4, padding: "10px 14px", fontSize: 13, color: "#DC2626", marginBottom: 14 }}>{error}</div>}
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 4, fontFamily: "system-ui", color: C.muted }}>Mot de passe</label>
-          <input type="password" value={pwd} onChange={e => setPwd(e.target.value)} onKeyDown={e => e.key === "Enter" && (pwd === ADMIN_PWD ? setAuth(true) : setError("Mot de passe incorrect"))}
-            style={IS} placeholder="••••••••" />
+        {error && <div style={{ background:"#FEF2F2", border:"1px solid #FCA5A5", borderRadius:4, padding:"10px 14px", fontSize:13, color:"#DC2626", marginBottom:14 }}>{error}</div>}
+        <div style={{ marginBottom:16 }}>
+          <label style={{ fontSize:12, fontWeight:700, display:"block", marginBottom:4, fontFamily:"system-ui", color:C.muted }}>Mot de passe</label>
+          <input type="password" value={pwd} onChange={e=>setPwd(e.target.value)} onKeyDown={e=>e.key==="Enter"&&(pwd==="tombes2026"||pwd===cfg?.adminPwd?setAuth(true):setError("Mot de passe incorrect"))} style={IS} placeholder="••••••••" />
         </div>
-        <button onClick={() => pwd === ADMIN_PWD ? setAuth(true) : setError("Mot de passe incorrect")}
-          style={{ width: "100%", background: C.sage, color: C.white, border: "none", borderRadius: 4, padding: "12px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "system-ui" }}>
+        <button onClick={()=>pwd==="tombes2026"||pwd===cfg?.adminPwd?setAuth(true):setError("Mot de passe incorrect")} style={{ width:"100%", background:C.sage, color:C.white, border:"none", borderRadius:4, padding:"12px", fontSize:14, fontWeight:600, cursor:"pointer", fontFamily:"system-ui" }}>
           Se connecter →
         </button>
-        <button onClick={onBack} style={{ width: "100%", background: "none", border: "none", color: C.muted, fontSize: 13, cursor: "pointer", marginTop: 12, fontFamily: "system-ui" }}>← Retour au site</button>
+        <button onClick={onBack} style={{ width:"100%", background:"none", border:"none", color:C.muted, fontSize:13, cursor:"pointer", marginTop:12, fontFamily:"system-ui" }}>← Retour au site</button>
       </div>
     </div>
   );
 
-  if (!cfg) return <div style={{ minHeight: "100vh", background: C.marble, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui", color: C.muted }}>⏳ Chargement...</div>;
+  if (!cfg) return <div style={{ minHeight:"100vh", background:C.marble, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"system-ui", color:C.muted }}>⏳ Chargement...</div>;
+
+  const caTotal = paiements.filter(p=>p.statut==="paye").reduce((s,p)=>s+(parseFloat(p.montant)||0),0);
+  const passagesMois = passages.filter(p=>{ const d=new Date(p.date_prevue||p.date_realisee); const n=new Date(); return d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear(); }).length;
+  const prochains = passages.filter(p=>p.statut==="prevu").sort((a,b)=>new Date(a.date_prevue)-new Date(b.date_prevue)).slice(0,5);
 
   return (
-    <div style={{ minHeight: "100vh", background: C.marble, fontFamily: "system-ui", color: C.stone }}>
-      <header style={{ background: C.stone, padding: "14px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100 }}>
-        <button onClick={onBack} style={{ color: "#AAA", background: "none", border: "none", cursor: "pointer", fontSize: 13 }}>← Site</button>
-        <div style={{ color: C.white, fontWeight: 700 }}>🪦 Admin CleanNet Tombes</div>
-        <button onClick={save} style={{ background: saved ? "#059669" : C.sage, color: C.white, border: "none", borderRadius: 6, padding: "8px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-          {saving ? "⏳" : saved ? "✓ Sauvegardé !" : "💾 Sauvegarder"}
-        </button>
+    <div style={{ minHeight:"100vh", background:C.marble, fontFamily:"system-ui", color:C.stone }}>
+      <header style={{ background:C.stone, padding:"14px 20px", display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:100 }}>
+        <button onClick={onBack} style={{ color:"#AAA", background:"none", border:"none", cursor:"pointer", fontSize:13 }}>← Site</button>
+        <div style={{ color:C.white, fontWeight:700 }}>🪦 Admin CleanNet Tombes</div>
+        <div style={{ width:80 }} />
       </header>
 
-      <div style={{ maxWidth: 700, margin: "0 auto", padding: "24px 20px 60px" }}>
-
-        {/* WhatsApp */}
-        <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 8, padding: "20px", marginBottom: 16 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 12px" }}>📲 WhatsApp</h3>
-          <label style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 4, color: C.muted }}>Numéro (format international sans +)</label>
-          <input value={cfg.whatsapp || ""} onChange={e => setCfg(c => ({...c, whatsapp: e.target.value}))} style={IS} placeholder="33612922048" />
+      {/* Tabs */}
+      <div style={{ background:C.white, borderBottom:`1px solid ${C.border}`, overflowX:"auto" }}>
+        <div style={{ display:"flex", padding:"0 16px" }}>
+          {TABS.map(t => (
+            <button key={t.id} onClick={()=>setTab(t.id)} style={{ padding:"12px 14px", border:"none", borderBottom:`2px solid ${tab===t.id?C.sage:"transparent"}`, background:"transparent", color:tab===t.id?C.sage:C.muted, fontWeight:tab===t.id?700:400, fontSize:13, cursor:"pointer", whiteSpace:"nowrap", fontFamily:"system-ui" }}>
+              {t.label}
+            </button>
+          ))}
         </div>
+      </div>
 
-        {/* Formules */}
-        <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 8, padding: "20px", marginBottom: 16 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 16px" }}>💶 Formules et tarifs</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {(cfg.formules || []).map((f, fi) => (
-              <div key={f.id} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 80px", gap: 8, alignItems: "end" }}>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, display: "block", marginBottom: 3, color: C.muted }}>{f.label} — Label</label>
-                  <input value={f.desc} onChange={e => { const n=[...cfg.formules]; n[fi]={...n[fi],desc:e.target.value}; setCfg(c=>({...c,formules:n})); }} style={IS} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, display: "block", marginBottom: 3, color: C.muted }}>Badge (optionnel)</label>
-                  <input value={f.badge || ""} onChange={e => { const n=[...cfg.formules]; n[fi]={...n[fi],badge:e.target.value||null}; setCfg(c=>({...c,formules:n})); }} style={IS} placeholder="ex: Populaire" />
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, display: "block", marginBottom: 3, color: C.muted }}>Prix (€)</label>
-                  <input type="number" value={f.prix} onChange={e => { const n=[...cfg.formules]; n[fi]={...n[fi],prix:Number(e.target.value)}; setCfg(c=>({...c,formules:n})); }} style={IS} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div style={{ maxWidth:800, margin:"0 auto", padding:"20px 16px 60px" }}>
 
-        {/* Prestations */}
-        <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 8, padding: "20px", marginBottom: 16 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 16px" }}>🧹 Prestations</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {(cfg.prestations || []).map((p, pi) => (
-              <div key={p.id} style={{ border: `1px solid ${C.border}`, borderRadius: 6, padding: "12px 14px" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "48px 1fr 80px", gap: 8, marginBottom: 8 }}>
-                  <input value={p.icon} onChange={e => { const n=[...cfg.prestations]; n[pi]={...n[pi],icon:e.target.value}; setCfg(c=>({...c,prestations:n})); }} style={{...IS, textAlign:"center", fontSize:18}} />
-                  <input value={p.label} onChange={e => { const n=[...cfg.prestations]; n[pi]={...n[pi],label:e.target.value}; setCfg(c=>({...c,prestations:n})); }} style={IS} placeholder="Nom de la prestation" />
-                  <div style={{ position: "relative" }}>
-                    <input type="number" value={p.sup || ""} onChange={e => { const n=[...cfg.prestations]; n[pi]={...n[pi],sup:e.target.value?Number(e.target.value):null}; setCfg(c=>({...c,prestations:n})); }} style={{...IS, paddingRight:24}} placeholder="0" />
-                    <span style={{ position:"absolute", right:8, top:"50%", transform:"translateY(-50%)", fontSize:11, color:C.muted }}>€</span>
+        {/* TABLEAU DE BORD */}
+        {tab==="dashboard" && (
+          <>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))", gap:10, marginBottom:20 }}>
+              {[
+                { label:"Clients actifs", val:clients.filter(c=>c.statut==="actif").length, icon:"👥" },
+                { label:"Passages ce mois", val:passagesMois, icon:"🧹" },
+                { label:"CA total", val:`${caTotal.toFixed(0)}€`, icon:"💶" },
+                { label:"Prochains passages", val:prochains.length, icon:"📅" },
+              ].map(s=>(
+                <div key={s.label} style={{ background:C.white, border:`1px solid ${C.border}`, borderRadius:10, padding:"16px 14px", textAlign:"center" }}>
+                  <div style={{ fontSize:24, marginBottom:6 }}>{s.icon}</div>
+                  <div style={{ fontSize:22, fontWeight:800, color:C.sage }}>{s.val}</div>
+                  <div style={{ fontSize:11, color:C.muted, marginTop:4 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ background:C.white, border:`1px solid ${C.border}`, borderRadius:10, padding:"16px 18px" }}>
+              <h3 style={{ fontSize:14, fontWeight:700, margin:"0 0 14px" }}>📅 Prochains passages</h3>
+              {prochains.length===0 ? <p style={{ color:C.muted, fontSize:13 }}>Aucun passage prévu</p> : prochains.map(p=>{
+                const client = clients.find(c=>c.id===p.client_id);
+                return (
+                  <div key={p.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 0", borderBottom:`1px solid ${C.border}` }}>
+                    <div>
+                      <div style={{ fontWeight:600, fontSize:14 }}>{client?.nom||"—"}</div>
+                      <div style={{ fontSize:12, color:C.muted }}>{client?.cimetiere||""}</div>
+                    </div>
+                    <div style={{ textAlign:"right" }}>
+                      <div style={{ fontSize:13, fontWeight:600 }}>{p.date_prevue}</div>
+                      <SBadge s={p.statut} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {/* CLIENTS */}
+        {tab==="clients" && (
+          <>
+            <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:14 }}>
+              <button onClick={()=>setShowNewClient(!showNewClient)} style={{ background:C.sage, color:C.white, border:"none", borderRadius:8, padding:"9px 18px", fontWeight:700, fontSize:13, cursor:"pointer" }}>
+                + Nouveau client
+              </button>
+            </div>
+
+            {showNewClient && (
+              <div style={{ background:C.white, border:`1px solid ${C.border}`, borderRadius:10, padding:"18px", marginBottom:16 }}>
+                <h3 style={{ fontSize:14, fontWeight:700, margin:"0 0 14px" }}>Nouveau client</h3>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 }}>
+                  {[{k:"nom",l:"Nom *"},{k:"telephone",l:"Téléphone"},{k:"email",l:"Email"},{k:"defunt",l:"Nom du défunt *"},{k:"cimetiere",l:"Cimetière"},{k:"concession",l:"Concession"}].map(f=>(
+                    <div key={f.k}>
+                      <label style={{ fontSize:11, fontWeight:600, display:"block", marginBottom:3, color:C.muted }}>{f.l}</label>
+                      <input value={newClient[f.k]} onChange={e=>setNewClient(p=>({...p,[f.k]:e.target.value}))} style={IS} />
+                    </div>
+                  ))}
+                  <div>
+                    <label style={{ fontSize:11, fontWeight:600, display:"block", marginBottom:3, color:C.muted }}>Formule</label>
+                    <select value={newClient.formule_code} onChange={e=>setNewClient(p=>({...p,formule_code:e.target.value}))} style={IS}>
+                      {(cfg.formules||[]).map(f=><option key={f.id} value={f.id}>{f.label} — {f.prix}€</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize:11, fontWeight:600, display:"block", marginBottom:3, color:C.muted }}>Type de pierre</label>
+                    <select value={newClient.type_pierre} onChange={e=>setNewClient(p=>({...p,type_pierre:e.target.value}))} style={IS}>
+                      <option value="">Non précisé</option>
+                      <option value="granit_poli">Granit poli</option>
+                      <option value="marbre">Marbre</option>
+                      <option value="pierre">Pierre</option>
+                      <option value="beton">Béton</option>
+                    </select>
                   </div>
                 </div>
-                <input value={p.desc} onChange={e => { const n=[...cfg.prestations]; n[pi]={...n[pi],desc:e.target.value}; setCfg(c=>({...c,prestations:n})); }} style={IS} placeholder="Description" />
+                <div style={{ marginBottom:10 }}>
+                  <label style={{ fontSize:11, fontWeight:600, display:"block", marginBottom:3, color:C.muted }}>Notes</label>
+                  <textarea value={newClient.notes} onChange={e=>setNewClient(p=>({...p,notes:e.target.value}))} style={{...IS,height:60,resize:"vertical"}} />
+                </div>
+                <div style={{ display:"flex", gap:8 }}>
+                  <button onClick={addClient} style={{ background:C.sage, color:C.white, border:"none", borderRadius:6, padding:"9px 18px", fontWeight:700, cursor:"pointer" }}>✅ Ajouter</button>
+                  <button onClick={()=>setShowNewClient(false)} style={{ background:"none", border:`1px solid ${C.border}`, borderRadius:6, padding:"9px 18px", cursor:"pointer" }}>Annuler</button>
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
+            )}
 
-        {/* Cimetières */}
-        <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 8, padding: "20px", marginBottom: 16 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 16px" }}>📍 Cimetières desservis</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {(cfg.cimetieres || []).map((c, ci) => (
-              <div key={ci} style={{ display: "flex", gap: 8 }}>
-                <input value={c} onChange={e => { const n=[...cfg.cimetieres]; n[ci]=e.target.value; setCfg(cfg=>({...cfg,cimetieres:n})); }} style={{...IS, flex:1}} />
-                <button onClick={() => setCfg(cfg=>({...cfg,cimetieres:cfg.cimetieres.filter((_,i)=>i!==ci)}))}
-                  style={{ background:"#FEE2E2", border:"none", borderRadius:4, padding:"8px 12px", color:"#DC2626", cursor:"pointer", fontWeight:700 }}>✕</button>
+            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+              {clients.length===0 ? <p style={{ color:C.muted, fontSize:14, textAlign:"center", padding:32 }}>Aucun client pour l'instant.</p> : clients.map(c=>(
+                <div key={c.id} style={{ background:C.white, border:`1px solid ${C.border}`, borderRadius:10, padding:"14px 16px", cursor:"pointer" }} onClick={()=>setSelectedClient(selectedClient===c.id?null:c.id)}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                    <div>
+                      <div style={{ fontWeight:700, fontSize:15 }}>{c.nom}</div>
+                      <div style={{ fontSize:12, color:C.muted }}>{c.telephone} · {c.email}</div>
+                    </div>
+                    <div style={{ textAlign:"right" }}>
+                      <SBadge s={c.statut||"actif"} />
+                      <div style={{ fontSize:11, color:C.muted, marginTop:4 }}>{(cfg.formules||[]).find(f=>f.id===c.formule_code)?.label||""}</div>
+                    </div>
+                  </div>
+                  {selectedClient===c.id && (
+                    <div style={{ marginTop:12, paddingTop:12, borderTop:`1px solid ${C.border}` }}>
+                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, fontSize:13 }}>
+                        <div><span style={{ color:C.muted }}>Défunt : </span><strong>{c.defunt||"—"}</strong></div>
+                        <div><span style={{ color:C.muted }}>Cimetière : </span><strong>{c.cimetiere||"—"}</strong></div>
+                        <div><span style={{ color:C.muted }}>Concession : </span><strong>{c.concession||"Non précisée"}</strong></div>
+                        <div><span style={{ color:C.muted }}>Pierre : </span><strong>{c.type_pierre||"—"}</strong></div>
+                      </div>
+                      {c.notes && <p style={{ fontSize:12, color:C.muted, marginTop:8, fontStyle:"italic" }}>{c.notes}</p>}
+                      <div style={{ display:"flex", gap:8, marginTop:12 }}>
+                        <button onClick={e=>{e.stopPropagation();setNewPassage(p=>({...p,client_id:c.id}));setShowNewPassage(true);setTab("passages");}} style={{ background:C.sageLight, color:C.sage, border:"none", borderRadius:6, padding:"7px 12px", fontSize:12, fontWeight:700, cursor:"pointer" }}>+ Passage</button>
+                        <button onClick={e=>{e.stopPropagation();setNewPaiement(p=>({...p,client_id:c.id}));setShowNewPaiement(true);setTab("paiements");}} style={{ background:"#EEF3FF", color:"#0057FF", border:"none", borderRadius:6, padding:"7px 12px", fontSize:12, fontWeight:700, cursor:"pointer" }}>+ Paiement</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* PASSAGES */}
+        {tab==="passages" && (
+          <>
+            <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:14 }}>
+              <button onClick={()=>setShowNewPassage(!showNewPassage)} style={{ background:C.sage, color:C.white, border:"none", borderRadius:8, padding:"9px 18px", fontWeight:700, fontSize:13, cursor:"pointer" }}>
+                + Nouveau passage
+              </button>
+            </div>
+
+            {showNewPassage && (
+              <div style={{ background:C.white, border:`1px solid ${C.border}`, borderRadius:10, padding:"18px", marginBottom:16 }}>
+                <h3 style={{ fontSize:14, fontWeight:700, margin:"0 0 14px" }}>Nouveau passage</h3>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 }}>
+                  <div>
+                    <label style={{ fontSize:11, fontWeight:600, display:"block", marginBottom:3, color:C.muted }}>Client *</label>
+                    <select value={newPassage.client_id} onChange={e=>setNewPassage(p=>({...p,client_id:e.target.value}))} style={IS}>
+                      <option value="">Sélectionner...</option>
+                      {clients.map(c=><option key={c.id} value={c.id}>{c.nom} — {c.defunt}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize:11, fontWeight:600, display:"block", marginBottom:3, color:C.muted }}>Date prévue *</label>
+                    <input type="date" value={newPassage.date_prevue} onChange={e=>setNewPassage(p=>({...p,date_prevue:e.target.value}))} style={IS} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize:11, fontWeight:600, display:"block", marginBottom:3, color:C.muted }}>Montant (€)</label>
+                    <input type="number" value={newPassage.montant} onChange={e=>setNewPassage(p=>({...p,montant:e.target.value}))} style={IS} />
+                  </div>
+                  <div style={{ display:"flex", alignItems:"center", gap:8, paddingTop:18 }}>
+                    <input type="checkbox" checked={newPassage.fleurs} onChange={e=>setNewPassage(p=>({...p,fleurs:e.target.checked}))} id="fleurs" />
+                    <label htmlFor="fleurs" style={{ fontSize:13 }}>Fleurs incluses</label>
+                  </div>
+                </div>
+                <div style={{ marginBottom:10 }}>
+                  <label style={{ fontSize:11, fontWeight:600, display:"block", marginBottom:3, color:C.muted }}>Remarques</label>
+                  <textarea value={newPassage.remarques} onChange={e=>setNewPassage(p=>({...p,remarques:e.target.value}))} style={{...IS,height:60,resize:"vertical"}} />
+                </div>
+                <div style={{ display:"flex", gap:8 }}>
+                  <button onClick={addPassage} style={{ background:C.sage, color:C.white, border:"none", borderRadius:6, padding:"9px 18px", fontWeight:700, cursor:"pointer" }}>✅ Ajouter</button>
+                  <button onClick={()=>setShowNewPassage(false)} style={{ background:"none", border:`1px solid ${C.border}`, borderRadius:6, padding:"9px 18px", cursor:"pointer" }}>Annuler</button>
+                </div>
               </div>
-            ))}
-            <button onClick={() => setCfg(c=>({...c,cimetieres:[...c.cimetieres,"Nouveau cimetière"]}))}
-              style={{ background:"none", border:`1.5px dashed ${C.sage}`, borderRadius:6, padding:"9px", color:C.sage, fontWeight:600, cursor:"pointer" }}>
-              + Ajouter un cimetière
+            )}
+
+            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+              {passages.length===0 ? <p style={{ color:C.muted, fontSize:14, textAlign:"center", padding:32 }}>Aucun passage enregistré.</p> : passages.sort((a,b)=>new Date(b.date_prevue||b.created_at)-new Date(a.date_prevue||a.created_at)).map(p=>{
+                const client = clients.find(c=>c.id===p.client_id);
+                return (
+                  <div key={p.id} style={{ background:C.white, border:`1px solid ${C.border}`, borderRadius:10, padding:"12px 16px" }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+                      <div style={{ fontWeight:600, fontSize:14 }}>{client?.nom||"Client inconnu"}</div>
+                      <SBadge s={p.statut} />
+                    </div>
+                    <div style={{ fontSize:12, color:C.muted, marginBottom:8 }}>
+                      📅 {p.date_prevue||"—"} · {client?.cimetiere||""} · {p.montant?`${p.montant}€`:""}
+                      {p.fleurs && " · 🌸 Fleurs"}
+                    </div>
+                    {p.remarques && <p style={{ fontSize:12, color:C.muted, fontStyle:"italic", marginBottom:8 }}>{p.remarques}</p>}
+                    <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                      {["prevu","realise","reporte","annule"].map(s=>(
+                        <button key={s} onClick={()=>updatePassage(p.id,{statut:s})} style={{ border:`1px solid ${p.statut===s?C.sage:C.border}`, background:p.statut===s?C.sageLight:"#fff", color:p.statut===s?C.sage:C.muted, borderRadius:6, padding:"4px 10px", fontSize:11, fontWeight:600, cursor:"pointer" }}>
+                          {s}
+                        </button>
+                      ))}
+                      <button onClick={()=>updatePassage(p.id,{photos_envoyees:!p.photos_envoyees})} style={{ border:`1px solid ${p.photos_envoyees?"#0057FF":C.border}`, background:p.photos_envoyees?"#EEF3FF":"#fff", color:p.photos_envoyees?"#0057FF":C.muted, borderRadius:6, padding:"4px 10px", fontSize:11, fontWeight:600, cursor:"pointer" }}>
+                        📸 {p.photos_envoyees?"Photos envoyées":"Envoyer photos"}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {/* PAIEMENTS */}
+        {tab==="paiements" && (
+          <>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+              <div style={{ background:C.white, border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 16px", fontSize:14 }}>
+                💶 Total encaissé : <strong style={{ color:C.sage }}>{caTotal.toFixed(2)}€</strong>
+              </div>
+              <button onClick={()=>setShowNewPaiement(!showNewPaiement)} style={{ background:C.sage, color:C.white, border:"none", borderRadius:8, padding:"9px 18px", fontWeight:700, fontSize:13, cursor:"pointer" }}>
+                + Nouveau paiement
+              </button>
+            </div>
+
+            {showNewPaiement && (
+              <div style={{ background:C.white, border:`1px solid ${C.border}`, borderRadius:10, padding:"18px", marginBottom:16 }}>
+                <h3 style={{ fontSize:14, fontWeight:700, margin:"0 0 14px" }}>Nouveau paiement</h3>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 }}>
+                  <div>
+                    <label style={{ fontSize:11, fontWeight:600, display:"block", marginBottom:3, color:C.muted }}>Client *</label>
+                    <select value={newPaiement.client_id} onChange={e=>setNewPaiement(p=>({...p,client_id:e.target.value}))} style={IS}>
+                      <option value="">Sélectionner...</option>
+                      {clients.map(c=><option key={c.id} value={c.id}>{c.nom}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize:11, fontWeight:600, display:"block", marginBottom:3, color:C.muted }}>Montant (€) *</label>
+                    <input type="number" value={newPaiement.montant} onChange={e=>setNewPaiement(p=>({...p,montant:e.target.value}))} style={IS} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize:11, fontWeight:600, display:"block", marginBottom:3, color:C.muted }}>Moyen de paiement</label>
+                    <select value={newPaiement.moyen} onChange={e=>setNewPaiement(p=>({...p,moyen:e.target.value}))} style={IS}>
+                      <option value="stripe">Stripe (carte)</option>
+                      <option value="virement">Virement</option>
+                      <option value="cheque">Chèque</option>
+                      <option value="especes">Espèces</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize:11, fontWeight:600, display:"block", marginBottom:3, color:C.muted }}>Statut</label>
+                    <select value={newPaiement.statut} onChange={e=>setNewPaiement(p=>({...p,statut:e.target.value}))} style={IS}>
+                      <option value="paye">Payé</option>
+                      <option value="echoue">Échoué</option>
+                      <option value="rembourse">Remboursé</option>
+                    </select>
+                  </div>
+                </div>
+                <div style={{ display:"flex", gap:8 }}>
+                  <button onClick={addPaiement} style={{ background:C.sage, color:C.white, border:"none", borderRadius:6, padding:"9px 18px", fontWeight:700, cursor:"pointer" }}>✅ Ajouter</button>
+                  <button onClick={()=>setShowNewPaiement(false)} style={{ background:"none", border:`1px solid ${C.border}`, borderRadius:6, padding:"9px 18px", cursor:"pointer" }}>Annuler</button>
+                </div>
+              </div>
+            )}
+
+            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+              {paiements.length===0 ? <p style={{ color:C.muted, fontSize:14, textAlign:"center", padding:32 }}>Aucun paiement enregistré.</p> : paiements.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).map(p=>{
+                const client = clients.find(c=>c.id===p.client_id);
+                return (
+                  <div key={p.id} style={{ background:C.white, border:`1px solid ${C.border}`, borderRadius:10, padding:"12px 16px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                    <div>
+                      <div style={{ fontWeight:600, fontSize:14 }}>{client?.nom||"—"}</div>
+                      <div style={{ fontSize:12, color:C.muted }}>{p.date_paiement} · {p.moyen}</div>
+                    </div>
+                    <div style={{ textAlign:"right" }}>
+                      <div style={{ fontSize:16, fontWeight:800, color:C.sage }}>{parseFloat(p.montant).toFixed(2)}€</div>
+                      <SBadge s={p.statut} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {/* CONFIG */}
+        {tab==="config" && (
+          <>
+            <div style={{ background:C.white, border:`1px solid ${C.border}`, borderRadius:8, padding:"18px", marginBottom:14 }}>
+              <h3 style={{ fontSize:14, fontWeight:700, margin:"0 0 12px" }}>📲 WhatsApp</h3>
+              <input value={cfg.whatsapp||""} onChange={e=>setCfg(c=>({...c,whatsapp:e.target.value}))} style={IS} placeholder="33612922048" />
+            </div>
+
+            <div style={{ background:C.white, border:`1px solid ${C.border}`, borderRadius:8, padding:"18px", marginBottom:14 }}>
+              <h3 style={{ fontSize:14, fontWeight:700, margin:"0 0 14px" }}>💶 Formules et tarifs</h3>
+              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                {(cfg.formules||[]).map((f,fi)=>(
+                  <div key={f.id} style={{ display:"grid", gridTemplateColumns:"1fr 80px", gap:8 }}>
+                    <div style={{ fontSize:13, fontWeight:600, color:C.stone, padding:"9px 0" }}>{f.label}</div>
+                    <div style={{ position:"relative" }}>
+                      <input type="number" value={f.prix} onChange={e=>{const n=[...cfg.formules];n[fi]={...n[fi],prix:Number(e.target.value)};setCfg(c=>({...c,formules:n}));}} style={{...IS,paddingRight:20}} />
+                      <span style={{ position:"absolute", right:8, top:"50%", transform:"translateY(-50%)", fontSize:11, color:C.muted }}>€</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ background:C.white, border:`1px solid ${C.border}`, borderRadius:8, padding:"18px", marginBottom:14 }}>
+              <h3 style={{ fontSize:14, fontWeight:700, margin:"0 0 14px" }}>📍 Cimetières</h3>
+              <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                {(cfg.cimetieres||[]).map((c,ci)=>(
+                  <div key={ci} style={{ display:"flex", gap:8 }}>
+                    <input value={c} onChange={e=>{const n=[...cfg.cimetieres];n[ci]=e.target.value;setCfg(cfg=>({...cfg,cimetieres:n}));}} style={{...IS,flex:1}} />
+                    <button onClick={()=>setCfg(cfg=>({...cfg,cimetieres:cfg.cimetieres.filter((_,i)=>i!==ci)}))} style={{ background:"#FEE2E2", border:"none", borderRadius:4, padding:"8px 12px", color:"#DC2626", cursor:"pointer", fontWeight:700 }}>✕</button>
+                  </div>
+                ))}
+                <button onClick={()=>setCfg(c=>({...c,cimetieres:[...(c.cimetieres||[]),"Nouveau cimetière"]}))} style={{ background:"none", border:`1.5px dashed ${C.sage}`, borderRadius:6, padding:"9px", color:C.sage, fontWeight:600, cursor:"pointer" }}>+ Ajouter</button>
+              </div>
+            </div>
+
+            <div style={{ background:C.white, border:`1px solid ${C.border}`, borderRadius:8, padding:"18px", marginBottom:14 }}>
+              <h3 style={{ fontSize:14, fontWeight:700, margin:"0 0 10px" }}>🔑 Mot de passe admin</h3>
+              <input value={cfg.adminPwd||""} onChange={e=>setCfg(c=>({...c,adminPwd:e.target.value}))} style={IS} placeholder="tombes2026" />
+            </div>
+
+            <button onClick={saveConfig} style={{ width:"100%", background:saved?"#059669":C.sage, color:C.white, border:"none", borderRadius:8, padding:"13px", fontWeight:800, fontSize:15, cursor:"pointer" }}>
+              {saving?"⏳ Sauvegarde...":saved?"✓ Sauvegardé !":"💾 Sauvegarder la configuration"}
             </button>
-          </div>
-        </div>
-
-        {/* Mot de passe */}
-        <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 8, padding: "20px" }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 12px" }}>🔑 Mot de passe admin</h3>
-          <input value={cfg.adminPwd || ""} onChange={e => setCfg(c=>({...c,adminPwd:e.target.value}))} style={IS} placeholder="tombes2026" />
-          <p style={{ fontSize: 11, color: C.muted, margin: "6px 0 0" }}>⚠️ Changez ce mot de passe et sauvegardez</p>
-        </div>
-
-        <button onClick={save} style={{ width:"100%", marginTop:20, background:saved?"#059669":C.sage, color:C.white, border:"none", borderRadius:6, padding:"14px", fontWeight:800, fontSize:15, cursor:"pointer" }}>
-          {saving?"⏳ Sauvegarde...":saved?"✓ Sauvegardé !":"💾 Sauvegarder toutes les modifications"}
-        </button>
+          </>
+        )}
       </div>
     </div>
   );
 }
+
+
 
 export default function App() {
   const [page, setPage] = useState("landing");
