@@ -704,9 +704,20 @@ function Admin({ onBack }) {
                         <div><span style={{ color:C.muted }}>Pierre : </span><strong>{c.type_pierre||"—"}</strong></div>
                       </div>
                       {c.notes && <p style={{ fontSize:12, color:C.muted, marginTop:8, fontStyle:"italic" }}>{c.notes}</p>}
-                      <div style={{ display:"flex", gap:8, marginTop:12 }}>
-                        <button onClick={e=>{e.stopPropagation();setNewPassage(p=>({...p,client_id:c.id}));setShowNewPassage(true);setTab("passages");}} style={{ background:C.sageLight, color:C.sage, border:"none", borderRadius:6, padding:"7px 12px", fontSize:12, fontWeight:700, cursor:"pointer" }}>+ Passage</button>
-                        <button onClick={e=>{e.stopPropagation();setNewPaiement(p=>({...p,client_id:c.id}));setShowNewPaiement(true);setTab("paiements");}} style={{ background:"#EEF3FF", color:"#0057FF", border:"none", borderRadius:6, padding:"7px 12px", fontSize:12, fontWeight:700, cursor:"pointer" }}>+ Paiement</button>
+                      <div style={{ display:"flex", gap:8, marginTop:12, flexWrap:"wrap" }}>
+                        <button onClick={e=>{e.stopPropagation();setNewPassage(p=>({...p,client_id:c.id}));setShowNewPassage(true);setTab("passages");}} style={{ background:C.sageLight, color:C.sage, border:"none", borderRadius:6, padding:"7px 12px", fontSize:12, fontWeight:700, cursor:"pointer" }}>🧹 Passage</button>
+                        <button onClick={e=>{e.stopPropagation();setNewPaiement(p=>({...p,client_id:c.id}));setShowNewPaiement(true);setTab("paiements");}} style={{ background:"#EEF3FF", color:"#0057FF", border:"none", borderRadius:6, padding:"7px 12px", fontSize:12, fontWeight:700, cursor:"pointer" }}>💶 Paiement</button>
+                        {["mensuel","bimestriel","trimestriel","semestriel","annuel"].includes(c.formule_code) && (
+                          <button onClick={async e=>{
+                            e.stopPropagation();
+                            const r = await fetch("/api/create-subscription", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ formule_code:c.formule_code, nom:c.nom, email:c.email, client_id:c.id }) });
+                            const data = await r.json();
+                            if (data.url) window.open(data.url, "_blank");
+                            else alert("Erreur : " + (data.error||"Vérifiez la clé Stripe"));
+                          }} style={{ background:"#F0FDF4", color:"#059669", border:"1px solid #059669", borderRadius:6, padding:"7px 12px", fontSize:12, fontWeight:700, cursor:"pointer" }}>
+                            💳 Activer abonnement Stripe
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}
