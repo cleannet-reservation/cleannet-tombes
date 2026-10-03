@@ -947,19 +947,64 @@ function Admin({ onBack }) {
 
 
 
+const DEFAULT_CONFIG = {
+  formules: [
+    { id:"ponctuel", label:"Ponctuel", desc:"Une seule intervention", prix:49, badge:null },
+    { id:"mensuel", label:"Mensuel", desc:"1 intervention / mois", prix:50, badge:"Populaire" },
+    { id:"bimestriel", label:"Bimestriel", desc:"1 intervention / 2 mois", prix:65, badge:null },
+    { id:"trimestriel", label:"Trimestriel", desc:"1 intervention / trimestre", prix:70, badge:null },
+    { id:"semestriel", label:"Semestriel", desc:"1 intervention / 6 mois", prix:90, badge:null },
+    { id:"annuel", label:"Annuel (Toussaint)", desc:"1 intervention / an", prix:95, badge:"Économique" },
+  ],
+  prestations: [
+    { id:"nettoyage", icon:"🧼", label:"Nettoyage de la pierre", desc:"Démoussage, détartrage et nettoyage complet", sup:null },
+    { id:"desherbage", icon:"🌿", label:"Désherbage", desc:"Élimination des mauvaises herbes", sup:null },
+    { id:"fleurs_artificielles", icon:"💐", label:"Fleurs artificielles", desc:"Dépôt d'un bouquet de fleurs artificielles", sup:8 },
+    { id:"fleurs_naturelles", icon:"🌸", label:"Fleurs naturelles", desc:"Dépôt de fleurs fraîches de saison", sup:15 },
+    { id:"photos", icon:"📸", label:"Photos avant/après", desc:"Rapport photo envoyé par SMS ou email", sup:5 },
+  ],
+  cimetieres: [
+    "Cimetière d'Antibes — Avenue du Docteur Donat",
+    "Cimetière de la Rayne — Antibes",
+    "Cimetière de Juan-les-Pins",
+    "Cimetière de Vallauris — Avenue Georges Clemenceau",
+  ],
+  whatsapp: "33612922048",
+};
+
 export default function App() {
   const [page, setPage] = useState("landing");
   const [config, setConfig] = useState(null);
+  const [configLoaded, setConfigLoaded] = useState(false);
 
   useEffect(() => {
     fetch(`/api/config?t=${Date.now()}`)
       .then(r => r.json())
-      .then(data => { if (data && Object.keys(data).length > 0) setConfig(data); })
-      .catch(() => {});
+      .then(data => {
+        if (data && Object.keys(data).length > 0) {
+          // Fusionner avec les défauts pour les clés manquantes
+          setConfig({ ...DEFAULT_CONFIG, ...data });
+        } else {
+          setConfig(DEFAULT_CONFIG);
+        }
+      })
+      .catch(() => setConfig(DEFAULT_CONFIG))
+      .finally(() => setConfigLoaded(true));
   }, []);
 
   const path = window.location.pathname;
   if (path === "/admin") return <Admin onBack={() => window.location.href = "/"} />;
+
+  // Attendre que la config soit chargée avant d'afficher le site
+  if (!configLoaded) return (
+    <div style={{ minHeight:"100vh", background:C.marble, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"Georgia, serif" }}>
+      <div style={{ textAlign:"center", color:C.muted }}>
+        <div style={{ fontSize:32, marginBottom:12 }}>🪦</div>
+        <div style={{ fontSize:14 }}>Chargement...</div>
+      </div>
+    </div>
+  );
+
   if (page === "reservation") return <Reservation onBack={() => setPage("landing")} config={config} />;
   return <Landing onStart={() => setPage("reservation")} config={config} />;
 }
