@@ -24,16 +24,30 @@ export default async function handler(req, res) {
   if (req.method === "POST") {
     const configData = req.body.data || req.body;
     if (!configData || Object.keys(configData).length === 0) return res.status(400).json({ error: "No data" });
-    // Utiliser upsert au lieu de PATCH pour éviter les problèmes de ligne manquante
-    const r = await fetch(`${base}`, {
+
+    const supabaseUrl = (process.env.SUPABASE_URL || "").replace(/\/rest\/v1\/?$/, "");
+    const supabaseKey = process.env.SUPABASE_ANON_KEY;
+
+    // Utiliser l'API SQL de Supabase directement
+    const sql = `UPDATE config SET data = '${JSON.stringify(configData).replace(/'/g, "''")}' WHERE id = 'main'`;
+    const r = await fetch(`${supabaseUrl}/rest/v1/rpc/exec_sql`, {
       method: "POST",
-      headers: { ...headers(), "Prefer": "resolution=merge-duplicates,return=representation" },
-      body: JSON.stringify({ id: "main", data: configData }),
+      headers: { "Content-Type": "application/json", "apikey": supabaseKey, "Authorization": `Bearer ${supabaseKey}` },
+      body: JSON.stringify({ sql }),
+    }).catch(() => null);
+
+    // Fallback — PATCH classique
+    const r2 = await fetch(`${supabaseUrl}/rest/v1/config?id=eq.main`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "apikey": supabaseKey, "Authorization": `Bearer ${supabaseKey}`, "Prefer": "return=minimal" },
+      body: JSON.stringify({ data: configData }),
     });
-    const result = await r.json();
-    console.log("Config saved:", JSON.stringify(result).slice(0, 200));
-    if (!r.ok) return res.status(500).json({ error: JSON.stringify(result) });
-    return res.status(200).json({ success: true });
+    console.log("PATCH status:", r2.status);
+    const txt = await r2.text();
+    console.log("PATCH response:", txt.slice(0, 200));
+
+    if (r2.status === 204 || r2.status === 200) return res.status(200).json({ success: true });
+    return res.status(500).json({ error: `Supabase error: ${r2.status} — ${txt}` });
   }
 
   return res.status(405).json({ error: "Method not allowed" });
