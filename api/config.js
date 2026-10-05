@@ -43,10 +43,13 @@ export default async function handler(req, res) {
       body: JSON.stringify({ data: configData }),
     });
     console.log("PATCH status:", r2.status);
+    // 204 = succès sans contenu, 200 = succès avec contenu
+    if (r2.status === 204 || r2.status === 200) {
+      console.log("Config sauvegardée avec succès !");
+      return res.status(200).json({ success: true });
+    }
     const txt = await r2.text();
-    console.log("PATCH response:", txt.slice(0, 200));
-
-    if (r2.status === 204 || r2.status === 200) return res.status(200).json({ success: true });
+    console.log("PATCH error:", txt.slice(0, 200));
     return res.status(500).json({ error: `Supabase error: ${r2.status} — ${txt}` });
   }
 
