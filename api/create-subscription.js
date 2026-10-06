@@ -1,11 +1,11 @@
 import Stripe from "stripe";
 
 const PRICE_IDS = {
-  mensuel:      "price_1UMZSZ2fqq0knYo0xnR2w1g7",
-  bimestriel:   "price_1UMZlg2fqq0knYo0ZhJP8g2f",
-  trimestriel:  "price_1UMZmU2fqq0knYo0bW6j3QMF",
-  semestriel:   "price_1UMZnF2fqq0knYo0ThqIBE4c",
-  annuel:       "price_1UMZnh2fqq0knYo05Ag1Afet",
+  mensuel:      "price_1UNenx2fqq0knYo0PMMCerZ7",
+  bimestriel:   "price_1UNenx2fqq0knYo0PMMCerZ7",
+  trimestriel:  "price_1UNenx2fqq0knYo0PMMCerZ7",
+  semestriel:   "price_1UNenx2fqq0knYo0PMMCerZ7",
+  annuel:       "price_1UNenx2fqq0knYo0PMMCerZ7",
 };
 
 export default async function handler(req, res) {
