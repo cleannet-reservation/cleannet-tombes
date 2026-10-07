@@ -28,16 +28,28 @@ export default async function handler(req, res) {
     }
 
     // Créer la session de paiement pour l'abonnement
+    const { metadata = {} } = req.body;
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "subscription",
       locale: "fr",
       customer: customer.id,
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${req.headers.origin}/admin?subscription=success&client_id=${client_id}`,
-      cancel_url: `${req.headers.origin}/admin?subscription=cancel`,
-      metadata: { client_id, formule_code },
+      success_url: `${req.headers.origin}?merci=1&prenom=${encodeURIComponent(nom.split(" ")[0])}`,
+      cancel_url: `${req.headers.origin}`,
+      metadata: { client_id: client_id || "", formule_code, ...metadata },
     });
+
+    // Notification WhatsApp à Mike
+    if (process.env.BREVO_API_KEY && process.env.OWNER_PHONE) {
+      const smsText = `CleanNetTombes\n🎉 Nouvel abonnement !\n👤 ${nom}\n📧 ${email}\n🌿 ${formule_code}\n⚰️ ${metadata.defunt||""}\n📍 ${metadata.cimetiere||""}\n📅 ${metadata.date||""}`;
+      await fetch("https://api.brevo.com/v3/transactionalSMS/sms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "api-key": process.env.BREVO_API_KEY },
+        body: JSON.stringify({ sender: "CleanNet", recipient: `+${process.env.OWNER_PHONE}`, content: smsText, type: "transactional" }),
+      }).catch(() => {});
+    }
 
     return res.status(200).json({ url: session.url, session_id: session.id });
   } catch(error) {

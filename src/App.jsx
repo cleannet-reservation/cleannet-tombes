@@ -199,9 +199,15 @@ function Reservation({ onBack, config }) {
     return true;
   };
 
-  const handleSubmit = () => {
-    const prestationsLabel = prestations.map(id => PRESTATIONS.find(p => p.id === id)?.label).join(", ");
-    const msg = encodeURIComponent(
+  const handleSubmit = async () => {
+    setSending(true);
+    try {
+      const prestationsLabel = prestations.map(id => PRESTATIONS_DATA.find(p => p.id === id)?.label).join(", ");
+      const isPonctuel = formule.id === "ponctuel";
+
+      if (isPonctuel) {
+        // Ponctuel → WhatsApp
+        const msg = encodeURIComponent(
 `🪦 *Demande d'entretien — CleanNet Tombes*
 
 👤 *Client :*
@@ -214,16 +220,49 @@ Défunt : ${form.defunt}
 Cimetière : ${form.cimetiere}
 ${form.concession ? `Concession : ${form.concession}` : ""}
 
-🌿 *Formule :* ${formule.label} — ${formule.prix}€/intervention
+🌿 *Formule :* ${formule.label} — ${formule.prix}€
 ✅ *Prestations :* ${prestationsLabel}
 📅 *Date souhaitée :* ${form.date}
 💶 *Total :* ${fmt(total)}
 ${form.note ? `📝 *Notes :* ${form.note}` : ""}
 
 _Envoyé depuis cleannet-tombes.vercel.app_`
-    );
-    window.open(`https://wa.me/${whatsappNum}?text=${msg}`, "_blank");
-    setDone(true);
+        );
+        window.open(`https://wa.me/${whatsappNum}?text=${msg}`, "_blank");
+        setDone(true);
+      } else {
+        // Abonnement → Stripe
+        const r = await fetch("/api/create-subscription", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            formule_code: formule.id,
+            nom: `${form.prenom} ${form.nom}`,
+            email: form.email,
+            metadata: {
+              telephone: form.telephone,
+              cimetiere: form.cimetiere,
+              defunt: form.defunt,
+              concession: form.concession,
+              date: form.date,
+              prestations: prestationsLabel,
+              formule: formule.label,
+              note: form.note,
+            }
+          }),
+        });
+        const data = await r.json();
+        if (data.url) {
+          window.location.href = data.url;
+        } else {
+          alert("Erreur : " + (data.error || "Impossible de créer l'abonnement"));
+        }
+      }
+    } catch(e) {
+      alert("Erreur de connexion");
+    } finally {
+      setSending(false);
+    }
   };
 
   const IS = { border: `1px solid ${C.border}`, borderRadius: 4, padding: "10px 12px", fontSize: 14, color: C.stone, outline: "none", fontFamily: "Georgia, serif", background: C.white, width: "100%", boxSizing: "border-box" };
@@ -404,11 +443,11 @@ _Envoyé depuis cleannet-tombes.vercel.app_`
               📸 Si vous avez sélectionné les photos avant/après, nous vous les enverrons par SMS et email dans les 24h suivant l'intervention.
             </div>
 
-            <button onClick={handleSubmit} style={{ width: "100%", background: "#25D366", color: C.white, border: "none", borderRadius: 4, padding: "14px", fontSize: 15, fontWeight: 600, cursor: "pointer", fontFamily: "system-ui" }}>
-              📲 Envoyer ma demande sur WhatsApp →
+            <button onClick={handleSubmit} disabled={sending} style={{ width: "100%", background: sending ? C.muted : formule?.id === "ponctuel" ? "#25D366" : C.sage, color: C.white, border: "none", borderRadius: 4, padding: "14px", fontSize: 15, fontWeight: 600, cursor: sending ? "not-allowed" : "pointer", fontFamily: "system-ui" }}>
+              {sending ? "⏳ Chargement..." : formule?.id === "ponctuel" ? "📲 Envoyer ma demande sur WhatsApp →" : "💳 Payer et s'abonner →"}
             </button>
             <p style={{ fontSize: 12, color: C.muted, textAlign: "center", marginTop: 12, fontFamily: "system-ui" }}>
-              Confirmation sous 24h · Paiement à l'intervention
+              {formule?.id === "ponctuel" ? "Confirmation sous 24h · Paiement à l'intervention" : "Paiement sécurisé par Stripe · Résiliation possible à tout moment"}
             </p>
           </>
         )}
@@ -1000,7 +1039,31 @@ export default function App() {
   }, []);
 
   const path = window.location.pathname;
+  const params = new URLSearchParams(window.location.search);
   if (path === "/admin") return <Admin onBack={() => window.location.href = "/"} />;
+
+  // Page de confirmation après paiement Stripe
+  if (params.get("merci") === "1") {
+    const prenom = params.get("prenom") || "";
+    return (
+      <div style={{ minHeight:"100vh", background:"#2C2C2C", display:"flex", alignItems:"center", justifyContent:"center", padding:24, fontFamily:"Georgia, serif" }}>
+        <div style={{ background:"#F5F3EF", borderRadius:8, padding:"48px 36px", maxWidth:480, width:"100%", textAlign:"center" }}>
+          <div style={{ fontSize:52, marginBottom:16 }}>🙏</div>
+          <h2 style={{ fontSize:22, fontWeight:400, margin:"0 0 12px" }}>Merci {prenom} !</h2>
+          <p style={{ color:"#7A7A7A", fontSize:14, lineHeight:1.8, margin:"0 0 24px", fontFamily:"system-ui" }}>
+            Votre abonnement est activé. Nous vous contacterons sous 24h pour confirmer la première intervention.
+          </p>
+          <div style={{ background:"#E8F0EC", borderRadius:6, padding:"14px 18px", fontSize:13, fontFamily:"system-ui", lineHeight:1.8, marginBottom:24 }}>
+            <div>📞 <strong>06 12 92 20 48</strong></div>
+            <div>📧 <strong>cleannet06600@gmail.com</strong></div>
+          </div>
+          <button onClick={() => window.location.href = "/"} style={{ background:"#5C7A6B", color:"#fff", border:"none", borderRadius:4, padding:"12px 28px", fontWeight:600, cursor:"pointer", fontFamily:"system-ui" }}>
+            Retour à l'accueil
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Attendre que la config soit chargée avant d'afficher le site
   if (!configLoaded) return (
