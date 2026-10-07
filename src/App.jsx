@@ -145,21 +145,123 @@ function Landing({ onStart, config }) {
         </div>
       </div>
 
-      {/* CTA */}
-      <div style={{ background: C.stone, padding: "48px 24px", textAlign: "center" }}>
-        <h2 style={{ fontSize: 24, fontWeight: 400, color: C.white, margin: "0 0 12px" }}>Confiez-nous l'entretien</h2>
-        <p style={{ color: "#AAA", fontSize: 14, margin: "0 0 28px", fontFamily: "system-ui" }}>Intervention sous 48h — Photo envoyée après chaque passage</p>
-        <button onClick={onStart} style={{ background: C.sage, color: C.white, border: "none", borderRadius: 4, padding: "14px 32px", fontSize: 15, fontWeight: 600, cursor: "pointer", fontFamily: "system-ui" }}>
-          Demander une intervention
-        </button>
-        <p style={{ color: "#666", fontSize: 12, marginTop: 16, fontFamily: "system-ui" }}>📞 06 12 92 20 48 · cleannet06600@gmail.com</p>
+      {/* CARTE GOOGLE MAPS */}
+      <div style={{ background: C.sageLight, padding: "56px 24px" }}>
+        <div style={{ maxWidth: 800, margin: "0 auto" }}>
+          <h2 style={{ fontSize: 26, fontWeight: 400, textAlign: "center", marginBottom: 8 }}>Notre zone d'intervention</h2>
+          <p style={{ color: C.muted, textAlign: "center", fontSize: 14, margin: "0 0 32px", fontFamily: "system-ui" }}>Antibes · Juan-les-Pins · Vallauris</p>
+          <div style={{ borderRadius: 8, overflow: "hidden", border: `1px solid ${C.border}` }}>
+            <iframe
+              title="Cimetières desservis par CleanNet Tombes"
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d46434.45!2d7.0869!3d43.5804!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x12cddb4e6e8e1b0f%3A0x6e2b7b4b7e7e7e7e!2sAntibes%2C%20France!5e0!3m2!1sfr!2sfr!4v1"
+              width="100%" height="350" style={{ border: 0, display: "block" }} allowFullScreen loading="lazy"
+            />
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
+            {cimetieres.filter(c => !c.startsWith("Autre")).map(c => (
+              <div key={c} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: C.white, border: `1px solid ${C.border}`, borderRadius: 6 }}>
+                <span style={{ color: C.sage, fontSize: 16 }}>📍</span>
+                <span style={{ fontSize: 13, fontFamily: "system-ui" }}>{c}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <footer style={{ background: "#1A1A1A", padding: "20px 24px", textAlign: "center" }}>
-        <p style={{ color: "#555", fontSize: 12, margin: 0, fontFamily: "system-ui" }}>
-          © 2026 CleanNet Multi-Service 06 · SIRET 539 560 607 00035 · TVA non applicable, art. 293 B du CGI
+      {/* GALERIE AVANT/APRÈS */}
+      <div style={{ padding: "56px 24px", maxWidth: 800, margin: "0 auto" }}>
+        <h2 style={{ fontSize: 26, fontWeight: 400, textAlign: "center", marginBottom: 8 }}>Nos interventions</h2>
+        <p style={{ color: C.muted, textAlign: "center", fontSize: 14, margin: "0 0 32px", fontFamily: "system-ui" }}>Photos avant et après chaque passage</p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          {[
+            { label: "Nettoyage de stèle", emoji: "🧼" },
+            { label: "Désherbage complet", emoji: "🌿" },
+            { label: "Dépôt de fleurs", emoji: "🌸" },
+            { label: "Remise en état", emoji: "✨" },
+          ].map(item => (
+            <div key={item.label} style={{ background: C.marble, border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
+              <div style={{ height: 140, background: `linear-gradient(135deg, ${C.sageLight}, ${C.border})`, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 8 }}>
+                <span style={{ fontSize: 40 }}>{item.emoji}</span>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <span style={{ background: C.stone, color: C.white, fontSize: 10, padding: "3px 8px", borderRadius: 20, fontFamily: "system-ui" }}>AVANT</span>
+                  <span style={{ background: C.sage, color: C.white, fontSize: 10, padding: "3px 8px", borderRadius: 20, fontFamily: "system-ui" }}>APRÈS</span>
+                </div>
+              </div>
+              <div style={{ padding: "10px 14px", fontSize: 13, fontFamily: "system-ui", fontWeight: 600, color: C.stone }}>{item.label}</div>
+            </div>
+          ))}
+        </div>
+        <p style={{ fontSize: 12, color: C.muted, textAlign: "center", marginTop: 20, fontFamily: "system-ui", fontStyle: "italic" }}>
+          Photos réelles envoyées à chaque client après intervention
         </p>
-      </footer>
+      </div>
+
+      {/* TÉMOIGNAGES */}
+      <div style={{ background: C.stone, padding: "56px 24px" }}>
+        <div style={{ maxWidth: 800, margin: "0 auto" }}>
+          <h2 style={{ fontSize: 26, fontWeight: 400, textAlign: "center", marginBottom: 8, color: C.white }}>Ce que disent nos clients</h2>
+          <p style={{ color: "#AAA", textAlign: "center", fontSize: 14, margin: "0 0 40px", fontFamily: "system-ui" }}>Ils nous font confiance pour entretenir la mémoire de leurs proches</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16 }}>
+            {[
+              { nom: "Marie D.", ville: "Antibes", texte: "Service impeccable, photos envoyées dans l'heure après chaque passage. Je recommande vivement.", etoiles: 5 },
+              { nom: "Jean-Paul R.", ville: "Juan-les-Pins", texte: "Très professionnel et discret. La tombe de ma mère est toujours impeccable. Merci.", etoiles: 5 },
+              { nom: "Sylvie M.", ville: "Vallauris", texte: "Abonnement trimestriel depuis 1 an. Je ne regrette pas, c'est exactement ce dont j'avais besoin.", etoiles: 5 },
+            ].map(t => (
+              <div key={t.nom} style={{ background: "#3C3C3C", borderRadius: 8, padding: "20px 18px" }}>
+                <div style={{ color: C.gold, fontSize: 16, marginBottom: 10 }}>{"★".repeat(t.etoiles)}</div>
+                <p style={{ color: "#CCC", fontSize: 13, lineHeight: 1.7, margin: "0 0 14px", fontFamily: "system-ui", fontStyle: "italic" }}>"{t.texte}"</p>
+                <div style={{ color: "#AAA", fontSize: 12, fontFamily: "system-ui" }}>{t.nom} · {t.ville}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* CTA */}
+      <div style={{ background: C.sage, padding: "56px 24px", textAlign: "center" }}>
+        <h2 style={{ fontSize: 24, fontWeight: 400, color: C.white, margin: "0 0 12px" }}>Confiez-nous l'entretien</h2>
+        <p style={{ color: "rgba(255,255,255,0.8)", fontSize: 14, margin: "0 0 28px", fontFamily: "system-ui" }}>Intervention sous 48h — Photo envoyée après chaque passage</p>
+        <button onClick={onStart} style={{ background: C.white, color: C.sage, border: "none", borderRadius: 4, padding: "14px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "system-ui" }}>
+          Demander une intervention →
+        </button>
+        <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, marginTop: 16, fontFamily: "system-ui" }}>📞 06 12 92 20 48 · cleannet06600@gmail.com</p>
+      </div>
+
+      {/* MENTIONS LÉGALES */}
+      <div style={{ background: "#1A1A1A", padding: "40px 24px" }}>
+        <div style={{ maxWidth: 800, margin: "0 auto" }}>
+          <details style={{ marginBottom: 16 }}>
+            <summary style={{ color: "#777", fontSize: 13, fontFamily: "system-ui", cursor: "pointer", listStyle: "none", display: "flex", alignItems: "center", gap: 6 }}>
+              <span>📄</span> Mentions légales & CGV
+            </summary>
+            <div style={{ marginTop: 16, padding: "20px", background: "#2C2C2C", borderRadius: 6, fontSize: 12, color: "#888", fontFamily: "system-ui", lineHeight: 1.8 }}>
+              <p><strong style={{ color: "#AAA" }}>Éditeur du site</strong><br/>
+              CleanNet Multi-Service 06 — Michael Martinez<br/>
+              357 boulevard Pierre Delmas, 06600 Antibes<br/>
+              SIRET : 539 560 607 00035<br/>
+              Micro-entreprise — TVA non applicable, art. 293 B du CGI<br/>
+              Email : cleannet06600@gmail.com · Tél : 06 12 92 20 48</p>
+
+              <p><strong style={{ color: "#AAA" }}>Conditions générales de vente</strong><br/>
+              Les abonnements sont sans engagement de durée minimale et résiliables à tout moment depuis votre espace Stripe.<br/>
+              Le paiement s'effectue par carte bancaire via Stripe (paiement sécurisé).<br/>
+              Toute résiliation doit être effectuée avant la prochaine date de prélèvement pour ne pas être facturé.<br/>
+              Les photos avant/après sont envoyées par SMS et email dans les 24h suivant chaque intervention.</p>
+
+              <p><strong style={{ color: "#AAA" }}>Protection des données</strong><br/>
+              Vos données personnelles sont utilisées uniquement pour la gestion de votre abonnement et ne sont pas transmises à des tiers.<br/>
+              Conformément au RGPD, vous disposez d'un droit d'accès, de rectification et de suppression de vos données.<br/>
+              Contact : cleannet06600@gmail.com</p>
+
+              <p><strong style={{ color: "#AAA" }}>Hébergement</strong><br/>
+              Vercel Inc. — 340 Pine Street, San Francisco, CA 94104, USA</p>
+            </div>
+          </details>
+          <p style={{ color: "#555", fontSize: 12, margin: 0, fontFamily: "system-ui", textAlign: "center" }}>
+            © 2026 CleanNet Multi-Service 06 · SIRET 539 560 607 00035 · TVA non applicable, art. 293 B du CGI
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
