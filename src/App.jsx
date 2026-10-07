@@ -958,6 +958,41 @@ function Admin({ onBack }) {
             </div>
 
             <div style={{ background:C.white, border:`1px solid ${C.border}`, borderRadius:8, padding:"18px", marginBottom:14 }}>
+              <h3 style={{ fontSize:14, fontWeight:700, margin:"0 0 14px" }}>🧹 Prestations</h3>
+              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                {(cfg.prestations||[]).map((p,pi)=>(
+                  <div key={p.id} style={{ border:`1px solid ${C.border}`, borderRadius:8, padding:"10px 12px" }}>
+                    <div style={{ display:"grid", gridTemplateColumns:"44px 1fr 70px 36px", gap:8, marginBottom:6 }}>
+                      <div>
+                        <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:3 }}>Icône</label>
+                        <input value={p.icon||""} onChange={e=>{const n=[...cfg.prestations];n[pi]={...n[pi],icon:e.target.value};setCfg(c=>({...c,prestations:n}));}} style={{...IS,textAlign:"center",fontSize:18}} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:3 }}>Nom</label>
+                        <input value={p.label||""} onChange={e=>{const n=[...cfg.prestations];n[pi]={...n[pi],label:e.target.value};setCfg(c=>({...c,prestations:n}));}} style={IS} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:3 }}>Supplément €</label>
+                        <input type="number" value={p.sup||""} onChange={e=>{const n=[...cfg.prestations];n[pi]={...n[pi],sup:e.target.value?Number(e.target.value):null};setCfg(c=>({...c,prestations:n}));}} style={IS} placeholder="0" />
+                      </div>
+                      <div style={{ display:"flex", alignItems:"flex-end" }}>
+                        <button onClick={()=>setCfg(c=>({...c,prestations:c.prestations.filter((_,i)=>i!==pi)}))} style={{ background:"#FEE2E2", border:"none", borderRadius:6, padding:"8px 10px", color:"#DC2626", cursor:"pointer", fontWeight:700, width:"100%" }}>✕</button>
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{ fontSize:11, color:C.muted, display:"block", marginBottom:3 }}>Description</label>
+                      <input value={p.desc||""} onChange={e=>{const n=[...cfg.prestations];n[pi]={...n[pi],desc:e.target.value};setCfg(c=>({...c,prestations:n}));}} style={IS} />
+                    </div>
+                  </div>
+                ))}
+                <button onClick={()=>setCfg(c=>({...c,prestations:[...(c.prestations||[]),{id:"p"+Date.now(),icon:"🔧",label:"Nouvelle prestation",desc:"Description",sup:null}]}))}
+                  style={{ background:"none", border:`1.5px dashed ${C.sage}`, borderRadius:6, padding:"9px", color:C.sage, fontWeight:600, cursor:"pointer" }}>
+                  + Ajouter une prestation
+                </button>
+              </div>
+            </div>
+
+            <div style={{ background:C.white, border:`1px solid ${C.border}`, borderRadius:8, padding:"18px", marginBottom:14 }}>
               <h3 style={{ fontSize:14, fontWeight:700, margin:"0 0 14px" }}>📍 Cimetières</h3>
               <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
                 {(cfg.cimetieres||[]).map((c,ci)=>(
