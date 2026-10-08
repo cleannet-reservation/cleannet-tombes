@@ -69,6 +69,15 @@ function Landing({ onStart, config }) {
   const formules = config?.formules || FORMULES;
   const prestations = config?.prestations || PRESTATIONS;
   const cimetieres = config?.cimetieres || CIMETIERES;
+  const [galeriePhotos, setGaleriePhotos] = useState([]);
+
+  useEffect(() => {
+    fetch("/api/galerie")
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d) && d.length > 0) setGaleriePhotos(d); })
+      .catch(() => {});
+  }, []);
+
   return (
     <div style={{ fontFamily: "'Georgia', serif", color: C.stone, background: C.marble, minHeight: "100vh" }}>
       {/* Header */}
@@ -171,28 +180,52 @@ function Landing({ onStart, config }) {
       {/* GALERIE AVANT/APRÈS */}
       <div style={{ padding: "56px 24px", maxWidth: 800, margin: "0 auto" }}>
         <h2 style={{ fontSize: 26, fontWeight: 400, textAlign: "center", marginBottom: 8 }}>Nos interventions</h2>
-        <p style={{ color: C.muted, textAlign: "center", fontSize: 14, margin: "0 0 32px", fontFamily: "system-ui" }}>Photos avant et après chaque passage</p>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-          {[
-            { label: "Nettoyage de stèle", emoji: "🧼" },
-            { label: "Désherbage complet", emoji: "🌿" },
-            { label: "Dépôt de fleurs", emoji: "🌸" },
-            { label: "Remise en état", emoji: "✨" },
-          ].map(item => (
-            <div key={item.label} style={{ background: C.marble, border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
-              <div style={{ height: 140, background: `linear-gradient(135deg, ${C.sageLight}, ${C.border})`, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 8 }}>
-                <span style={{ fontSize: 40 }}>{item.emoji}</span>
-                <div style={{ display: "flex", gap: 6 }}>
-                  <span style={{ background: C.stone, color: C.white, fontSize: 10, padding: "3px 8px", borderRadius: 20, fontFamily: "system-ui" }}>AVANT</span>
-                  <span style={{ background: C.sage, color: C.white, fontSize: 10, padding: "3px 8px", borderRadius: 20, fontFamily: "system-ui" }}>APRÈS</span>
+        <p style={{ color: C.muted, textAlign: "center", fontSize: 14, margin: "0 0 32px", fontFamily: "system-ui" }}>Résultats avant et après chaque passage</p>
+        {galeriePhotos.length > 0 ? (
+          // Photos réelles depuis Supabase
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
+            {galeriePhotos.slice(0, 8).map(ph => {
+              const isAvant = ph.name.toLowerCase().includes("avant");
+              const isApres = ph.name.toLowerCase().includes("apres") || ph.name.toLowerCase().includes("après");
+              return (
+                <div key={ph.name} style={{ position: "relative", borderRadius: 8, overflow: "hidden", border: `1px solid ${C.border}` }}>
+                  <img src={ph.url} alt="Intervention" style={{ width: "100%", height: 180, objectFit: "cover", display: "block", filter: isAvant ? "grayscale(30%) brightness(0.85)" : "none" }} loading="lazy" />
+                  {(isAvant || isApres) && (
+                    <span style={{ position: "absolute", bottom: 8, left: isAvant ? 8 : "auto", right: isApres ? 8 : "auto", background: isAvant ? C.stone : C.sage, color: C.white, fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 20, fontFamily: "system-ui" }}>
+                      {isAvant ? "AVANT" : "APRÈS"}
+                    </span>
+                  )}
                 </div>
+              );
+            })}
+          </div>
+        ) : (
+          // Photos par défaut (Unsplash)
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            {[
+              { label: "Nettoyage de stèle", avant: "https://images.unsplash.com/photo-1503428593586-e225b39bddfe?w=400&q=80", apres: "https://images.unsplash.com/photo-1544892890-d8a2f219e6c7?w=400&q=80" },
+              { label: "Désherbage complet", avant: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=80", apres: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=400&q=80" },
+              { label: "Dépôt de fleurs", avant: "https://images.unsplash.com/photo-1496256654245-8f3d0ef3bebe?w=400&q=80", apres: "https://images.unsplash.com/photo-1487530811015-780b5e27c6e7?w=400&q=80" },
+              { label: "Remise en état", avant: "https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=400&q=80", apres: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=80" },
+            ].map(item => (
+              <div key={item.label} style={{ background: C.marble, border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", height: 140 }}>
+                  <div style={{ position: "relative", overflow: "hidden" }}>
+                    <img src={item.avant} alt="Avant" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(30%) brightness(0.85)" }} />
+                    <span style={{ position: "absolute", bottom: 6, left: 6, background: C.stone, color: C.white, fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 20, fontFamily: "system-ui" }}>AVANT</span>
+                  </div>
+                  <div style={{ position: "relative", overflow: "hidden" }}>
+                    <img src={item.apres} alt="Après" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <span style={{ position: "absolute", bottom: 6, right: 6, background: C.sage, color: C.white, fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 20, fontFamily: "system-ui" }}>APRÈS</span>
+                  </div>
+                </div>
+                <div style={{ padding: "10px 14px", fontSize: 13, fontFamily: "system-ui", fontWeight: 600, color: C.stone }}>{item.label}</div>
               </div>
-              <div style={{ padding: "10px 14px", fontSize: 13, fontFamily: "system-ui", fontWeight: 600, color: C.stone }}>{item.label}</div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
         <p style={{ fontSize: 12, color: C.muted, textAlign: "center", marginTop: 20, fontFamily: "system-ui", fontStyle: "italic" }}>
-          Photos réelles envoyées à chaque client après intervention
+          📸 Photos envoyées à chaque client dans les 24h après intervention
         </p>
       </div>
 
@@ -590,6 +623,10 @@ function Admin({ onBack }) {
   const [newClient, setNewClient] = useState({ nom:"", telephone:"", email:"", cimetiere:"", defunt:"", concession:"", type_pierre:"", formule_code:"mensuel", notes:"" });
   const [newPassage, setNewPassage] = useState({ client_id:"", date_prevue:"", montant:"", remarques:"", fleurs:false });
   const [newPaiement, setNewPaiement] = useState({ client_id:"", montant:"", moyen:"stripe", statut:"paye" });
+  const [photos, setPhotos] = useState([]);
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
 
   const ADMIN_PWD = cfg?.adminPwd || "tombes2026";
   const SB_URL = process.env.SUPABASE_URL || "";
@@ -643,6 +680,7 @@ function Admin({ onBack }) {
   const loadClients = () => fetch("/api/clients-sepulture").then(r=>r.json()).then(d=>setClients(Array.isArray(d)?d:[])).catch(()=>{});
   const loadPassages = () => fetch("/api/passages").then(r=>r.json()).then(d=>setPassages(Array.isArray(d)?d:[])).catch(()=>{});
   const loadPaiements = () => fetch("/api/paiements").then(r=>r.json()).then(d=>setPaiements(Array.isArray(d)?d:[])).catch(()=>{});
+  const loadPhotos = () => { setPhotoLoading(true); fetch("/api/galerie").then(r=>r.json()).then(d=>setPhotos(Array.isArray(d)?d:[])).catch(()=>{}).finally(()=>setPhotoLoading(false)); };
 
   const saveConfig = async () => {
     setSaving(true);
@@ -689,6 +727,7 @@ function Admin({ onBack }) {
     { id:"clients", label:"👥 Clients" },
     { id:"passages", label:"🧹 Passages" },
     { id:"paiements", label:"💶 Paiements" },
+    { id:"galerie", label:"📸 Galerie" },
     { id:"config", label:"⚙️ Configuration" },
   ];
 
@@ -1015,6 +1054,118 @@ function Admin({ onBack }) {
             </div>
           </>
         )}
+
+        {/* GALERIE */}
+        {tab==="galerie" && (() => {
+          // Charger les photos si pas encore fait
+          if (!photoLoading && photos.length === 0) loadPhotos();
+
+          const handleUpload = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (!file.type.startsWith("image/")) { setUploadError("Seules les images sont acceptées"); return; }
+            if (file.size > 10 * 1024 * 1024) { setUploadError("Image trop volumineuse (max 10 Mo)"); return; }
+            setUploading(true); setUploadError(null);
+            try {
+              const reader = new FileReader();
+              reader.onload = async (ev) => {
+                const base64 = ev.target.result;
+                const r = await fetch("/api/upload-photo", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ file: base64, name: file.name, type: file.type }),
+                });
+                const data = await r.json();
+                if (!r.ok) throw new Error(data.error || "Erreur upload");
+                await loadPhotos();
+              };
+              reader.onerror = () => { throw new Error("Erreur lecture fichier"); };
+              reader.readAsDataURL(file);
+            } catch(err) {
+              setUploadError(err.message);
+            } finally {
+              setUploading(false);
+              e.target.value = "";
+            }
+          };
+
+          const deletePhoto = async (name) => {
+            if (!confirm("Supprimer cette photo ?")) return;
+            await fetch("/api/galerie", { method:"DELETE", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ name }) });
+            loadPhotos();
+          };
+
+          return (
+            <>
+              <div style={{ background:C.white, border:`1px solid ${C.border}`, borderRadius:10, padding:"18px", marginBottom:16 }}>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
+                  <h3 style={{ fontSize:15, fontWeight:700, margin:0 }}>📸 Photos avant/après</h3>
+                  <div style={{ fontSize:12, color:C.muted }}>{photos.length} photo{photos.length!==1?"s":""}</div>
+                </div>
+
+                {uploadError && (
+                  <div style={{ background:"#FEF2F2", border:"1px solid #FCA5A5", borderRadius:6, padding:"10px 14px", fontSize:13, color:"#DC2626", marginBottom:12 }}>
+                    {uploadError}
+                  </div>
+                )}
+
+                <label style={{ display:"block", width:"100%", cursor:"pointer" }}>
+                  <div style={{ border:`2px dashed ${uploading ? C.sage : C.border}`, borderRadius:10, padding:"28px 20px", textAlign:"center", background: uploading ? "#F0FAF5" : C.marble, transition:"all 0.2s" }}>
+                    {uploading ? (
+                      <>
+                        <div style={{ fontSize:28, marginBottom:8 }}>⏳</div>
+                        <div style={{ fontSize:14, color:C.sage, fontWeight:600 }}>Upload en cours...</div>
+                      </>
+                    ) : (
+                      <>
+                        <div style={{ fontSize:32, marginBottom:8 }}>📷</div>
+                        <div style={{ fontSize:14, fontWeight:600, color:C.stone, marginBottom:4 }}>Ajouter une photo</div>
+                        <div style={{ fontSize:12, color:C.muted }}>Appuie ici pour choisir depuis ta galerie ou prendre une photo</div>
+                      </>
+                    )}
+                  </div>
+                  <input type="file" accept="image/*" capture="environment" onChange={handleUpload} style={{ display:"none" }} disabled={uploading} />
+                </label>
+              </div>
+
+              {photoLoading ? (
+                <div style={{ textAlign:"center", padding:40, color:C.muted }}>⏳ Chargement...</div>
+              ) : photos.length === 0 ? (
+                <div style={{ textAlign:"center", padding:40, color:C.muted, background:C.white, borderRadius:10, border:`1px solid ${C.border}` }}>
+                  <div style={{ fontSize:32, marginBottom:8 }}>🖼️</div>
+                  <div style={{ fontSize:14 }}>Aucune photo pour l'instant</div>
+                  <div style={{ fontSize:12, marginTop:4 }}>Ajoute ta première photo ci-dessus</div>
+                </div>
+              ) : (
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(160px, 1fr))", gap:12 }}>
+                  {photos.map(ph => (
+                    <div key={ph.name} style={{ position:"relative", borderRadius:10, overflow:"hidden", border:`1px solid ${C.border}`, background:C.white }}>
+                      <img
+                        src={ph.url}
+                        alt={ph.name}
+                        style={{ width:"100%", height:150, objectFit:"cover", display:"block" }}
+                        loading="lazy"
+                      />
+                      <div style={{ padding:"8px 10px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                        <div style={{ fontSize:10, color:C.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:100 }}>
+                          {ph.name.replace(/^\d+_/,"")}
+                        </div>
+                        <button
+                          onClick={() => deletePhoto(ph.name)}
+                          style={{ background:"#FEE2E2", border:"none", borderRadius:4, padding:"4px 8px", color:"#DC2626", cursor:"pointer", fontSize:11, fontWeight:700, flexShrink:0 }}
+                        >✕</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ marginTop:16, background:"#EEF3FF", border:"1px solid #C7D7FF", borderRadius:8, padding:"12px 14px", fontSize:12, color:"#1D4ED8" }}>
+                💡 <strong>Conseil :</strong> Les photos apparaissent automatiquement dans la section "Galerie" de ton site. Pour le rendu avant/après, nomme tes fichiers avec <em>avant</em> ou <em>apres</em> dans le nom.
+              </div>
+            </>
+          );
+        })()}
 
         {/* CONFIG */}
         {tab==="config" && (
