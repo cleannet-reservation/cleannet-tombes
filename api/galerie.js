@@ -1,5 +1,5 @@
 const SB_URL = () => (process.env.SUPABASE_URL || "").replace(/\/rest\/v1\/?$/, "");
-const SB_KEY = () => process.env.SUPABASE_ANON_KEY;
+const SB_KEY = () => process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
 export default async function handler(req, res) {
   const url = SB_URL();

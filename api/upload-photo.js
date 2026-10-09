@@ -1,5 +1,6 @@
 const SB_URL = () => (process.env.SUPABASE_URL || "").replace(/\/rest\/v1\/?$/, "");
-const SB_KEY = () => process.env.SUPABASE_ANON_KEY;
+// Service role key bypasse le RLS — nécessaire pour l'upload Storage
+const SB_KEY = () => process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -11,7 +12,6 @@ export default async function handler(req, res) {
   const { file, name, type } = req.body;
   if (!file || !name) return res.status(400).json({ error: "file and name required" });
 
-  // file is base64 string
   const base64Data = file.replace(/^data:[^;]+;base64,/, "");
   const buffer = Buffer.from(base64Data, "base64");
 
@@ -22,21 +22,29 @@ export default async function handler(req, res) {
     apikey: key,
     Authorization: `Bearer ${key}`,
     "Content-Type": contentType,
-    "x-upsert": "false",
+    "x-upsert": "true",
   };
 
-  const r = await fetch(`${url}/storage/v1/object/galerie/${encodeURIComponent(fileName)}`, {
-    method: "POST",
-    headers,
-    body: buffer,
-  });
+  try {
+    const r = await fetch(`${url}/storage/v1/object/galerie/${encodeURIComponent(fileName)}`, {
+      method: "POST",
+      headers,
+      body: buffer,
+    });
 
-  const data = await r.json().catch(() => ({}));
+    const raw = await r.text();
+    let data;
+    try { data = JSON.parse(raw); } catch(_) { data = {}; }
 
-  if (!r.ok) {
-    return res.status(500).json({ error: data.message || data.error || "Upload error" });
+    if (!r.ok) {
+      console.error("Upload error:", r.status, raw);
+      return res.status(500).json({ error: data.message || data.error || `HTTP ${r.status}: ${raw}` });
+    }
+
+    const publicUrl = `${url}/storage/v1/object/public/galerie/${encodeURIComponent(fileName)}`;
+    return res.status(200).json({ success: true, url: publicUrl, name: fileName });
+  } catch (err) {
+    console.error("Upload exception:", err.message);
+    return res.status(500).json({ error: err.message });
   }
-
-  const publicUrl = `${url}/storage/v1/object/public/galerie/${fileName}`;
-  return res.status(200).json({ success: true, url: publicUrl, name: fileName });
 }

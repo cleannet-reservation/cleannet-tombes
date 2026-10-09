@@ -1010,6 +1010,15 @@ function Admin({ onBack }) {
                             💳 Activer abonnement Stripe
                           </button>
                         )}
+                        <button onClick={async e=>{
+                          e.stopPropagation();
+                          if (!confirm(`Supprimer le client "${c.nom}" ? Cette action est irréversible.`)) return;
+                          await fetch("/api/clients-sepulture", { method:"DELETE", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ id:c.id }) });
+                          setSelectedClient(null);
+                          loadClients();
+                        }} style={{ background:"#FEE2E2", color:"#DC2626", border:"none", borderRadius:6, padding:"7px 12px", fontSize:12, fontWeight:700, cursor:"pointer", marginLeft:"auto" }}>
+                          🗑️ Supprimer
+                        </button>
                       </div>
                     </div>
                   )}
