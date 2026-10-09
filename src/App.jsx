@@ -1057,8 +1057,8 @@ function Admin({ onBack }) {
 
         {/* GALERIE */}
         {tab==="galerie" && (() => {
-          // Charger les photos si pas encore fait
-          if (!photoLoading && photos.length === 0) loadPhotos();
+          // eslint-disable-next-line react-hooks/rules-of-hooks
+          useEffect(() => { loadPhotos(); }, []);
 
           const handleUpload = async (e) => {
             const file = e.target.files[0];
@@ -1066,26 +1066,27 @@ function Admin({ onBack }) {
             if (!file.type.startsWith("image/")) { setUploadError("Seules les images sont acceptées"); return; }
             if (file.size > 10 * 1024 * 1024) { setUploadError("Image trop volumineuse (max 10 Mo)"); return; }
             setUploading(true); setUploadError(null);
+            e.target.value = "";
             try {
-              const reader = new FileReader();
-              reader.onload = async (ev) => {
-                const base64 = ev.target.result;
-                const r = await fetch("/api/upload-photo", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ file: base64, name: file.name, type: file.type }),
-                });
-                const data = await r.json();
-                if (!r.ok) throw new Error(data.error || "Erreur upload");
-                await loadPhotos();
-              };
-              reader.onerror = () => { throw new Error("Erreur lecture fichier"); };
-              reader.readAsDataURL(file);
+              // Lire le fichier en base64 (promesse)
+              const base64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = ev => resolve(ev.target.result);
+                reader.onerror = () => reject(new Error("Erreur lecture fichier"));
+                reader.readAsDataURL(file);
+              });
+              const r = await fetch("/api/upload-photo", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ file: base64, name: file.name, type: file.type }),
+              });
+              const data = await r.json();
+              if (!r.ok) throw new Error(data.error || "Erreur upload");
+              await loadPhotos();
             } catch(err) {
               setUploadError(err.message);
             } finally {
               setUploading(false);
-              e.target.value = "";
             }
           };
 

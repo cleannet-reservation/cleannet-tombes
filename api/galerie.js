@@ -7,44 +7,69 @@ export default async function handler(req, res) {
 
   if (!url || !key) return res.status(500).json({ error: "Supabase not configured" });
 
-  const headers = { apikey: key, Authorization: `Bearer ${key}` };
+  const headers = {
+    apikey: key,
+    Authorization: `Bearer ${key}`,
+    "Content-Type": "application/json",
+  };
 
   // GET — liste les photos
   if (req.method === "GET") {
-    const r = await fetch(`${url}/storage/v1/object/list/galerie`, {
-      method: "POST",
-      headers: { ...headers, "Content-Type": "application/json" },
-      body: JSON.stringify({ prefix: "", limit: 200, offset: 0, sortBy: { column: "created_at", order: "desc" } }),
-    });
-    const data = await r.json();
-    if (!r.ok) return res.status(500).json({ error: data.message || "List error" });
+    try {
+      const r = await fetch(`${url}/storage/v1/object/list/galerie`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          prefix: "",
+          limit: 200,
+          offset: 0,
+          sortBy: { column: "created_at", order: "desc" },
+        }),
+      });
 
-    const photos = (Array.isArray(data) ? data : [])
-      .filter(f => f.name && !f.name.endsWith("/"))
-      .map(f => ({
-        name: f.name,
-        url: `${url}/storage/v1/object/public/galerie/${f.name}`,
-        created_at: f.created_at,
-        size: f.metadata?.size,
-      }));
+      const raw = await r.text();
+      let data;
+      try { data = JSON.parse(raw); } catch (_) { data = []; }
 
-    return res.status(200).json(photos);
+      if (!r.ok) {
+        console.error("Supabase list error:", r.status, raw);
+        return res.status(500).json({ error: data?.message || `HTTP ${r.status}`, raw });
+      }
+
+      const photos = (Array.isArray(data) ? data : [])
+        .filter(f => f.name && f.name !== ".emptyFolderPlaceholder")
+        .map(f => ({
+          name: f.name,
+          url: `${url}/storage/v1/object/public/galerie/${encodeURIComponent(f.name)}`,
+          created_at: f.created_at,
+          size: f.metadata?.size,
+        }));
+
+      return res.status(200).json(photos);
+    } catch (err) {
+      console.error("Galerie GET error:", err.message);
+      return res.status(500).json({ error: err.message });
+    }
   }
 
   // DELETE — supprimer une photo
   if (req.method === "DELETE") {
-    const { name } = req.body;
+    const { name } = req.body || {};
     if (!name) return res.status(400).json({ error: "name required" });
 
-    const r = await fetch(`${url}/storage/v1/object/galerie/${encodeURIComponent(name)}`, {
-      method: "DELETE",
-      headers,
-    });
-    if (!r.ok) {
-      const data = await r.json().catch(() => ({}));
-      return res.status(500).json({ error: data.message || "Delete error" });
+    try {
+      const r = await fetch(`${url}/storage/v1/object/galerie/${encodeURIComponent(name)}`, {
+        method: "DELETE",
+        headers,
+      });
+      if (!r.ok) {
+        const data = await r.json().catch(() => ({}));
+        return res.status(500).json({ error: data.message || "Delete error" });
+      }
+      return res.status(200).json({ success: true });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
     }
-    return res.status(200).json({ success: true });
   }
 
   return res.status(405).json({ error: "Method not allowed" });
